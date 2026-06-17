@@ -1,0 +1,16 @@
+{
+  "name": "Vioast",
+  "short_name": "Vioast",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#131314",
+  "theme_color": "#131314",
+  "icons": [
+    {
+      "src": "/app-logo.png",  
+      "sizes": "512x512",
+      "type": "image/png" 
+    }
+  ]
+}
