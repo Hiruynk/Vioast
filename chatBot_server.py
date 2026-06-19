@@ -129,40 +129,37 @@ def load_all_data():
 courses_chi, courses_eng = load_all_data()
 
 # ==========================================
-# 3. 伺服器專用: 定義 ChromaDB 與 Gemini Embedding (極速輕量版)
+# 3. 伺服器專用: 定義 ChromaDB 與 Gemini Embedding (新版 SDK 修正版)
 # ==========================================
 
-# 🌟 升級 1：改用 Gemini 的 Embedding 模型
-# 優點：伺服器零負擔、啟動極快、向量維度與語意理解力遠超 MiniLM
 class GeminiEmbeddingFunction(EmbeddingFunction):
     def __init__(self, api_key: str):
-        print("📥 正在連線 Google Gemini Embedding API...")
-        genai.configure(api_key=api_key)
-        # 使用最新的 text-embedding-004 模型
-        self.model_name = "models/text-embedding-004"
+        print("📥 正在連線 Google GenAI Embedding API...")
+        # 🌟 修正 1：新版 SDK 使用 genai.Client 進行實例化，移除舊版 configure()
+        self.client = genai.Client(api_key=api_key)
+        # 🌟 修正 2：使用目前最新的通用 Embedding 模型
+        self.model_name = "gemini-embedding-001"
 
     def __call__(self, input: Documents) -> Embeddings:
         try:
-            # 呼叫 Gemini API 將文字轉成向量 (支援批量處理)
-            result = genai.embed_content(
+            # 🌟 修正 3：使用 client.models.embed_content 進行向量轉換
+            result = self.client.models.embed_content(
                 model=self.model_name,
-                content=input,
-                task_type="retrieval_document"
+                contents=input
             )
-            return result['embedding']
+            # 🌟 修正 4：遍歷結構，將 ContentEmbedding 物件中的 values 浮點數陣列取出
+            return [e.values for e in result.embeddings]
         except Exception as e:
             print(f"❌ Embedding API 錯誤: {e}")
-            # 返回 768 維度的空向量 (text-embedding-004 是 768 維)
-            return [[0.0] * 768 for _ in input]
-
-# 若你不想用 Gemini，也可以保留原來的 HFEmbeddingFunction 作為備用
+            # gemini-embedding-001 預設是 3072 維度，出錯時回傳空向量
+            return [[0.0] * 3072 for _ in input]
 
 def init_vector_db():
     # 使用純記憶體模式，避免 HF Space 寫入權限報錯
     client = chromadb.EphemeralClient()
     collections = {}
     
-    # 記得替換成你的 Gemini API Key (建議從 os.getenv 讀取環境變數)
+    # 從環境變數讀取 API Key
     api_key = os.getenv("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
     embedding_func = GeminiEmbeddingFunction(api_key=api_key)
     
@@ -193,13 +190,12 @@ def init_vector_db():
                 if k not in ["ProgrammeCode", "ProgrammeName"] and v:
                     full_text += f"【{k}】:\n{flatten_data(v)}\n\n"
                     
-            # 🌟 升級 2：加入「重疊分塊」(Overlapping Chunking)
-            chunk_size = 800  # 稍微縮小 chunk size 讓檢索更精準
-            overlap = 150     # 前後保留 150 字的重疊，防止語意被硬生生切斷
+            # 重疊分塊邏輯
+            chunk_size = 800  
+            overlap = 150     
             
             if len(full_text) > chunk_size:
                 step = chunk_size - overlap
-                # 使用滑動視窗進行切片
                 chunks = [full_text[i : i + chunk_size] for i in range(0, len(full_text), step)]
                 
                 for i, chunk in enumerate(chunks):
@@ -212,8 +208,7 @@ def init_vector_db():
                 metadatas.append({"code": code, "name": name, "chunk": 0})
                 ids.append(f"{code}_p0")
 
-        # 🌟 升級 3：調整寫入批次大小
-        # Gemini API 通常有每分鐘的 Request 限制，依照資料量可適度放大或縮小 batch
+        # 寫入 ChromaDB 記憶體
         batch_size = 20 
         for i in range(0, len(docs), batch_size):
             try:
@@ -227,7 +222,6 @@ def init_vector_db():
                 
         return collection
 
-    # 假設 courses_chi 和 courses_eng 已在外部定義
     collections['chi'] = process_data(courses_chi, "hkiit_server_db_chi", "課程")
     collections['eng'] = process_data(courses_eng, "hkiit_server_db_eng", "Course")
     print("✅ Space 雲端雙語知識庫建立完成！")
