@@ -455,7 +455,8 @@ async def chat_endpoint(req: ChatRequest):
                 target_url = f"{req.local_url.rstrip('/')}/api/chat"
                 payload = {
                     "model": req.local_model_name if req.local_model_name else "gemma4:12b",
-                    "messages": ollama_messages
+                    "messages": ollama_messages,
+                    "stream": True
                 }
 
                 async with httpx.AsyncClient(timeout=300.0) as client:

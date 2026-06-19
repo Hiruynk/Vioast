@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let live2dApp = null; 
     let fileContentBuffer = ""; 
 
+    let live2dFullHistory = JSON.parse(localStorage.getItem('hkiit_l2d_history')) || [];
+
     let chatSessions = JSON.parse(localStorage.getItem('hkiit_chat_sessions')) || [];
     let currentSessionId = Date.now();
     let currentMessages = [];
@@ -137,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn_copy: `${svgCopy} Copy`, btn_copied: `${svgCheck} Copied`, btn_copy_fail: `${svgFail} Failed`,
             upload_image: "Image", upload_file: "Attachment",
             tooltip_upload: "Upload",
-            l2d_mode_auto: `${svgMic} Auto (Voice)`, l2d_mode_verify: `${svgPen} Verify (Check)`,
+            l2d_mode_auto: `${svgMic} Auto`, l2d_mode_verify: `${svgPen} Verify`,
             l2d_placeholder_auto: "Tap Mic to speak...",
             l2d_placeholder_verify: "Type or use Mic ...",
             local_help_title: "❓ Local LLM Startup Tutorial",
@@ -154,6 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
             l2d_placeholder_verify: "Type or use Mic ...",
             l2d_loading_text: "Loading model, please wait...", // 🌟 新增英文
             local_help_title: "❓ Local LLM Startup Tutorial",
+            tooltip_l2d_history: "Live2D Chat Log", l2d_history_title: "Chat History",
             welcome_md: `Hello! Welcome to the **IVE HKIIT Open Day**! I am your official **AI Chatbot Assistant**.\n\nThe IVE IT Discipline has been upgraded to the **Hong Kong Institute of Information Technology (HKIIT)**! I'm here to provide you with syllabus details, tuition fees, and admission requirements for our Higher Diploma programs, or navigate you through today's activities!\n\n**Try asking me:**\n* Syllabus: \`What will I learn in Higher Diploma in Data Science and AI (IT114126)?\`\n* Admission: \`What are the requirements for Real Estate (BA114037)?\`\n* Transport: \`How do I get to IVE Tsing Yi?\`\n\nHow can I help you today?`
         },
         'zh-HK': {
@@ -183,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn_copy: `${svgCopy} 複製`, btn_copied: `${svgCheck} 已複製`, btn_copy_fail: `${svgFail} 失敗`,
             upload_image: "圖片", upload_file: "附件",
             tooltip_upload: "上傳",
-            l2d_mode_auto: `${svgMic} 直發模式 (純語音)`, l2d_mode_verify: `${svgPen} 校對模式 (檢查)`,
+            l2d_mode_auto: `${svgMic} 直發模式`, l2d_mode_verify: `${svgPen} 校對模式`,
             l2d_placeholder_auto: "請按麥克風語音對話...",
             l2d_placeholder_verify: "語音或打字輸入後發送...",
             local_help_title: "❓ 本地大模型啟動教學",
@@ -200,6 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
             l2d_placeholder_verify: "語音或打字輸入後發送...",
             l2d_loading_text: "模型載入中，請稍候...", // 🌟 新增繁體
             local_help_title: "❓ 本地大模型啟動教學",
+            tooltip_l2d_history: "Live2D 聊天紀錄", l2d_history_title: "聊天紀錄",
             welcome_md: `您好！歡迎來到 **IVE HKIIT 開放日**！我是您的官方 **AI Chatbot 智能升學諮詢助手**。\n\n香港專業教育學院（IVE）資訊科技學系已全新升級為 **香港資訊科技學院（HKIIT）**！在這裡，我能為您提供各項熱門的高級文憑 (Higher Diploma) 課程大綱、學費、入學要求，或是為您導航今天的開放日活動！\n\n**您可以試著這樣問我：**\n* 課程內容：\`IT114126 數據科學及人工智能高級文憑學咩？\`\n* 入學條件：\`BA114037 房地產高級文憑有咩入學要求？\`\n* 交通導航：\`青衣 IVE 點樣去？\` \n\n請問今天有甚麼我可以幫到您？`
         },
         'zh-CN': {
@@ -229,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn_copy: `${svgCopy} 复制`, btn_copied: `${svgCheck} 已复制`, btn_copy_fail: `${svgFail} 失败`,
             upload_image: "图片", upload_file: "附件",
             tooltip_upload: "上传",
-            l2d_mode_auto: `${svgMic} 直发模式 (纯语音)`, l2d_mode_verify: `${svgPen} 校对模式 (检查)`,
+            l2d_mode_auto: `${svgMic} 直发模式`, l2d_mode_verify: `${svgPen} 校对模式`,
             l2d_placeholder_auto: "请按麦克风语音对话...",
             l2d_placeholder_verify: "语音或打字输入后发送...",
             local_help_title: "❓ 本地大模型启动教学",
@@ -246,6 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
             l2d_placeholder_verify: "语音或打字输入后发送...",
             l2d_loading_text: "模型载入中，请稍候...", // 🌟 新增簡體
             local_help_title: "❓ 本地大模型启动教学",
+            tooltip_l2d_history: "Live2D 聊天记录", l2d_history_title: "聊天记录",
             welcome_md: `您好！欢迎来到 **IVE HKIIT 开放日**！我是您的官方 **AI Chatbot 智能升学咨询助手**。\n\n香港专业教育学院（IVE）资讯科技学系已全新升级为 **香港资讯科技学院（HKIIT）**！在这里，我能为您提供各项热门的高级文凭 (Higher Diploma) 课程大纲、学费、入学要求，或是为您导航今天的开放日活动！\n\n**您可以试着这样问我：**\n* 课程内容：\`IT114126 数据科学及人工智能高级文凭学什么？\`\n* 入学条件：\`BA114037 房地产高级文凭有什么入学要求？\`\n* 交通导航：\`青衣 IVE 怎么去？\` \n\n请问今天有什么我可以帮到您？`
         }
     };
@@ -946,6 +951,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
+            // 將全量回覆送入 TTS 與氣泡分離器
+            speakFrontendTTS(fullAiResponse);
+
+            live2dMessages.push({ role: 'user', content: text });
+            live2dMessages.push({ role: 'ai', content: fullAiResponse });
+
+            // 👇 🌟 2. 儲存 AI 回覆
+            live2dFullHistory.push({ role: 'ai', content: fullAiResponse });
+            saveL2dHistory();
+            renderL2dHistory();
+
             content.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
             currentMessages.push({role: 'ai', content: aiTextContent});
             saveSession();
@@ -1333,66 +1349,103 @@ document.addEventListener('DOMContentLoaded', () => {
                 playNextQueue();
             }
 
+            // 👇 🌟 核心新增：終極無聲打字救援模式
+            function executeSilentTyping() {
+                console.warn("⚠️ 所有 TTS API 無回應，啟動無聲逐字顯示模式");
+                
+                // 估算打字時間：每個字 0.2 秒 (最少給予 1 秒的緩衝)
+                const estimatedSeconds = Math.max(1.0, textToType.length * 0.2);
+                
+                // 傳入一個帶有假 duration 的物件，騙過打字機讓它啟動
+                triggerTypewriter({ duration: estimatedSeconds });
+                
+                // 根據打字機的邏輯，2秒延遲 + 實際打字時間 + 800ms 停頓緩衝後，自動呼叫下一句
+                setTimeout(() => {
+                    handleAudioEnded();
+                }, 2000 + (estimatedSeconds * 1000) + 800);
+            }
+
+            // ... (前面的 triggerTypewriter 和 handleAudioEnded 保持不變)
+
             currentAudio = new Audio(primaryUrl);
             currentAudio.crossOrigin = "anonymous"; 
 
             let isFallbackTriggered = false;
 
-            currentAudio.onplay = () => {
+            // 🌟 核心修復 1：從 onplay 改為 onplaying！
+            // 確保 TTS 伺服器推理完畢，且瀏覽器真正開始發聲的那一刻，才解鎖口型與打字機！
+            currentAudio.onplaying = () => { 
                 triggerTypewriter(currentAudio);
                 
-                // 1. 強制喚醒休眠的音訊引擎
                 if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 if (audioContext.state === 'suspended') audioContext.resume();
 
-                // 2. 確保分析器有接上「實體喇叭 (destination)」
                 if (!audioAnalyser) {
                     audioAnalyser = audioContext.createAnalyser();
                     audioAnalyser.fftSize = 256; 
                     audioAnalyser.connect(audioContext.destination); 
                 }
 
-                // 3. 將音源導入分析器
                 if (!currentAudio.sourceNode) {
                     try {
                         currentAudio.sourceNode = audioContext.createMediaElementSource(currentAudio);
                         currentAudio.sourceNode.connect(audioAnalyser);
-                    } catch(e) {
-                        console.warn("分析器綁定失敗:", e);
-                    }
+                    } catch(e) { console.warn("分析器綁定失敗:", e); }
                 }
             };
 
+            // 🌟 嚴格鎖定的錯誤處理鏈
             currentAudio.onerror = () => {
                 if (isFallbackTriggered) return;
                 isFallbackTriggered = true;
 
-                console.warn("⚡ 偵測到跨域(CORS)阻擋，切換為安全播放模式保證發聲...");
-                window.useFakeMouthSync = true; 
-                
+                console.warn("⚡ 主伺服器失效，切換安全播放模式...");
                 const safeAudio = new Audio(primaryUrl);
-                
-                // 🌟 關鍵修復 1：把替補音檔重新綁定給全域變數 currentAudio，確保可以被正確暫停中斷！
                 currentAudio = safeAudio; 
+                let safeFailed = false;
 
-                safeAudio.onplay = () => triggerTypewriter(safeAudio);
+                // 🌟 核心修復 2：安全模式也改為 onplaying
+                safeAudio.onplaying = () => triggerTypewriter(safeAudio);
                 safeAudio.onended = handleAudioEnded;
+                
                 safeAudio.onerror = () => { 
+                    if (safeFailed) return;
+                    safeFailed = true;
+
+                    console.warn("⚡ 安全模式失效，嘗試備用伺服器...");
                     const backupAudio = new Audio(backupUrl);
-                    currentAudio = backupAudio; // 🌟 再次綁定
-                    backupAudio.onplay = () => triggerTypewriter(backupAudio);
+                    currentAudio = backupAudio; 
+                    let backupFailed = false;
+
+                    // 🌟 核心修復 3：備用模式也改為 onplaying
+                    backupAudio.onplaying = () => triggerTypewriter(backupAudio);
                     backupAudio.onended = handleAudioEnded;
-                    backupAudio.onerror = handleAudioEnded;
+                    
+                    backupAudio.onerror = () => {
+                        if (backupFailed) return;
+                        backupFailed = true;
+                        executeSilentTyping();
+                    };
                     
                     backupAudio.play().catch(e => {
                         if (e.name === 'NotAllowedError') handleAudioEnded();
+                        else if (!backupFailed) {
+                            backupFailed = true;
+                            executeSilentTyping();
+                        }
                     });
                 };
                 
                 safeAudio.play().catch(e => {
                     if (e.name === 'NotAllowedError') handleAudioEnded();
+                    else if (!safeFailed) {
+                        safeFailed = true;
+                        safeAudio.onerror(); 
+                    }
                 });
             };
+
+            // ... (後面的 fetch nextUrl 和 currentAudio.play() 保持不變)
 
             if (sentenceQueue.length > 0) {
                 const nextUrl = `https://tts-api.hiruynk.com/?text=${encodeURIComponent(sentenceQueue[0].voice)}&text_language=${mappedLang}`;
@@ -1401,12 +1454,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             currentAudio.onended = handleAudioEnded;
             currentAudio.play().catch(e => {
-                // 🌟 關鍵修復 2：嚴格過濾錯誤種類！
-                // 只有因為「沒按鈕就直接發聲」被瀏覽器阻擋時 (NotAllowedError)，才直接跳下一句。
-                // 如果是因為網路出錯，放手讓上面的 .onerror 去接管，絕對不可以在這裡呼叫 handleAudioEnded() 導致兩句話疊加！
                 if (e.name === 'NotAllowedError') {
                     console.error("瀏覽器阻擋自動播放:", e);
                     handleAudioEnded();
+                } else if (!isFallbackTriggered) {
+                    currentAudio.onerror();
                 }
             });
         }
@@ -1459,32 +1511,67 @@ document.addEventListener('DOMContentLoaded', () => {
                         core.setParameterValueById('ParamMouthForm', 0.2); 
                     }
 
-                    if (ttsSpeaking && audioAnalyser) {
-                        // 🌟 1. 建立一個陣列來接收頻率資料
-                        const dataArray = new Uint8Array(audioAnalyser.frequencyBinCount);
-                        // 🌟 2. 獲取當下這一幀的頻率數據 (時域數據)
-                        audioAnalyser.getByteTimeDomainData(dataArray);
+                    // ==========================================
+                    // 👄 終極重構：雙引擎口型同步 (精準延遲 + 防抽搐)
+                    // ==========================================
+                    let mouthOpen = 0;
 
-                        // 🌟 3. 計算平均音量 (RMS 或簡單取絕對值平均)
-                        let sum = 0;
-                        for (let i = 0; i < dataArray.length; i++) {
-                            // 數據是 0~255，128 代表無聲，所以要減去 128 取絕對值
-                            sum += Math.abs(dataArray[i] - 128); 
+                    if (ttsSpeaking) {
+                        let avgVol = 0;
+                        if (audioAnalyser) {
+                            const dataArray = new Uint8Array(audioAnalyser.frequencyBinCount);
+                            audioAnalyser.getByteTimeDomainData(dataArray);
+                            let sum = 0;
+                            for (let i = 0; i < dataArray.length; i++) {
+                                sum += Math.abs(dataArray[i] - 128); 
+                            }
+                            avgVol = sum / dataArray.length;
                         }
-                        let averageVolume = sum / dataArray.length;
 
-                        // 🌟 4. 將音量轉換為嘴巴開合度 (ParamMouthOpenY 通常是 0 到 1)
-                        // 這裡的 30 是一個靈敏度系數，你可以根據實際聲音大小微調
-                        let mouthOpen = Math.min(1.0, averageVolume / 30); 
-                        
-                        // 讓嘴巴動作平滑一點，避免閃爍太快 (可選)
-                        // let currentOpen = core.getParameterValueById('ParamMouthOpenY') || 0;
-                        // mouthOpen = currentOpen + (mouthOpen - currentOpen) * 0.5;
+                        // 1. 破除 CORS 封鎖：只要抓到一次真實音波，永久解鎖真實模式
+                        if (avgVol > 0.5) {
+                            app.locals.hasRealAudio = true;
+                        }
 
-                        core.setParameterValueById('ParamMouthOpenY', mouthOpen);
+                        // 2. 記錄語音宣告開始的「零秒時刻」
+                        if (!app.locals.voiceStartTime) {
+                            app.locals.voiceStartTime = t;
+                        }
+
+                        // 3. 雙引擎分流
+                        if (app.locals.hasRealAudio) {
+                            // 🚀 [真實引擎] 直接跟隨音浪，稍微放大靈敏度 (/12)
+                            mouthOpen = Math.min(1.0, avgVol / 12);
+                        } else {
+                            // 🤖 [仿生引擎] 被瀏覽器擋住波形時，使用數學演算法救援
+                            let elapsedTime = t - app.locals.voiceStartTime;
+                            
+                            // 🌟 核心修復：硬性延遲 0.3 秒！等聲音真正傳出喇叭後才開始動！
+                            if (elapsedTime > 0.3) {
+                                // 讓正弦波從 0 開始，避免瞬間張大嘴
+                                let waveMain = Math.sin((elapsedTime - 0.3) * 16) * 0.7;
+                                let waveDetail = Math.sin((elapsedTime - 0.3) * 26) * 0.3;
+                                let combined = Math.abs(waveMain + waveDetail);
+                                
+                                // 加入自然呼吸停頓
+                                let microPause = Math.sin(t * 8) > 0.8 ? 0 : 1.0; 
+                                mouthOpen = combined * microPause;
+                            }
+                        }
                     } else {
-                        core.setParameterValueById('ParamMouthOpenY', 0);
+                        // 沒在講話時，將所有狀態徹底歸零
+                        if (app.locals) {
+                            app.locals.hasRealAudio = false;
+                            app.locals.voiceStartTime = undefined;
+                        }
                     }
+
+                    // 4. 平滑過渡系統 (Lerp)，0.7 代表快速跟上且不閃爍
+                    let currentMouth = core.getParameterValueById('ParamMouthOpenY') || 0;
+                    mouthOpen = currentMouth + (mouthOpen - currentMouth) * 0.7; 
+                    
+                    core.setParameterValueById('ParamMouthOpenY', mouthOpen);
+                    // ==========================================
 
                     // 4. 💬 氣泡同步連動算法
                     if (bubble && bubble.dataset.baseX) {
@@ -1534,7 +1621,10 @@ document.addEventListener('DOMContentLoaded', () => {
         l2dMicBtn.disabled = true;
 
         // 顯示為思考狀態
-        ttsSpeaking = false; 
+        ttsSpeaking = false;
+        live2dFullHistory.push({ role: 'user', content: text });
+        saveL2dHistory();
+        renderL2dHistory(); 
         const bubble = document.getElementById('live2d-speech-bubble');
 
         bubble.className = `live2d-bubble mood-${live2dMood}`;
@@ -1606,6 +1696,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // 將全量回覆送入 TTS 與氣泡分離器
             speakFrontendTTS(fullAiResponse);
 
+            // 👇 🌟 核心修復：補回缺失的 AI 紀錄儲存代碼
+            live2dFullHistory.push({ role: 'ai', content: fullAiResponse });
+            saveL2dHistory();
+            renderL2dHistory();
+
             // 👇 儲存至專屬歷史紀錄，且不呼叫 saveSession()
             live2dMessages.push({ role: 'user', content: text });
             live2dMessages.push({ role: 'ai', content: fullAiResponse });
@@ -1665,14 +1760,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 💬 氣泡邏輯 (🛑 嚴格保留原本的動態偵測闊度邏輯)
         const bubble = document.getElementById('live2d-speech-bubble');
+        const historyPanel = document.getElementById('l2d-history-panel'); // 🌟 新增
+
         if (bubble) {
             let headY = model.y + model.height * (isMobile ? 0.12 : 0.20);
-            
-            // 氣泡起點計算 (電腦/手機各自適配)
             let headX = isMobile ? (logicalWidth * 0.51) : (logicalWidth / 2 + 100);
 
-            // 🌟 原有的動態偵測邊距邏輯
-            let maxAvailableSpace = logicalWidth - headX - 20; 
+            // 👇 🌟 新增：偵測懸浮窗是否開啟，決定要往內縮減多少空間
+            let panelOffset = 0;
+            if (!isMobile && historyPanel && !historyPanel.classList.contains('hidden')) {
+                panelOffset = 370; // 懸浮窗寬度 350 + 安全距離 20
+            }
+
+            // 🌟 減去 panelOffset，達成開窗瞬間氣泡自動內縮！
+            let maxAvailableSpace = logicalWidth - headX - panelOffset - 20; 
 
             // 🌟 原有的絕對閥值限制邏輯
             let absoluteLimit = isMobile ? maxAvailableSpace : 700;
@@ -1687,6 +1788,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             bubble.style.maxWidth = `${bubbleMaxWidth}px`;
+            // ... (下面保持不變)
             
             bubble.style.minWidth = isMobile ? "80px" : "120px"; 
 
@@ -1828,5 +1930,76 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         l2dInput.placeholder = l2dInputMode === 'auto' ? dict.l2d_placeholder_auto : dict.l2d_placeholder_verify;
+    }
+
+    // =======================================================
+    // 🌟 Live2D 獨立聊天紀錄面板系統
+    // =======================================================
+    const btnL2dHistory = document.getElementById('btn-l2d-history');
+    const panelL2dHistory = document.getElementById('l2d-history-panel');
+    const closeL2dHistory = document.getElementById('close-l2d-history');
+
+    function saveL2dHistory() {
+        localStorage.setItem('hkiit_l2d_history', JSON.stringify(live2dFullHistory));
+    }
+
+    function renderL2dHistory() {
+        const contentBox = document.getElementById('l2d-history-content');
+        if (!contentBox) return;
+        contentBox.innerHTML = '';
+        
+        live2dFullHistory.forEach(msg => {
+            const item = document.createElement('div');
+            item.className = `l2d-log-item ${msg.role === 'user' ? 'log-user' : 'log-ai'}`;
+            
+            const roleEl = document.createElement('div');
+            roleEl.className = 'l2d-log-role';
+            
+            // 判斷語言
+            let youStr = appSettings.appLang === 'en' ? '丨You' : '你';
+            roleEl.innerText = msg.role === 'user' ? youStr : 'Hiyori';
+            
+            const textEl = document.createElement('div');
+            textEl.className = 'l2d-log-text';
+            
+            // 🌟 核心修復：精準提取 [TEXT] 內容，徹底拋棄 [VOICE] 內容
+            let cleanText = msg.content;
+            const textRegex = /\[\s*TEXT\s*\]([\s\S]*?)(?:\[\s*\/\s*TEXT\s*\]|$)/i;
+            const voiceRegex = /\[\s*VOICE\s*\]([\s\S]*?)(?:\[\s*\/\s*VOICE\s*\]|$)/i;
+
+            if (textRegex.test(cleanText)) {
+                // 如果有 [TEXT] 標籤，只抓取裡面的內容
+                cleanText = cleanText.match(textRegex)[1].trim();
+            } else {
+                // 備用防呆：如果 AI 忘記寫 [TEXT]，至少把 [VOICE] 的區塊整坨挖掉
+                if (voiceRegex.test(cleanText)) {
+                    cleanText = cleanText.replace(voiceRegex, '');
+                }
+                // 清理殘留的純標籤
+                cleanText = cleanText.replace(/\[\s*\/?\s*(VOICE|TEXT)\s*\]/gi, '').trim();
+            }
+            
+            textEl.innerText = cleanText;
+            
+            item.appendChild(roleEl);
+            item.appendChild(textEl);
+            contentBox.appendChild(item);
+        });
+
+        setTimeout(() => {
+            contentBox.scrollTo({ top: contentBox.scrollHeight, behavior: 'smooth' });
+        }, 50);
+    }
+
+    if (btnL2dHistory && panelL2dHistory) {
+        // 點擊懸浮按鈕：自動切換開關 (Toggle)
+        btnL2dHistory.onclick = () => {
+            panelL2dHistory.classList.toggle('hidden');
+            renderL2dHistory();
+            if (currentMode === 'live2d' && live2dModelInstance) {
+                updateLive2DScale(live2dModelInstance);
+            }
+        };
+        // (這裡原本的 closeL2dHistory.onclick 已經整段刪除)
     }
 }); // <--- 注意這裡保留了腳本結尾的右括號

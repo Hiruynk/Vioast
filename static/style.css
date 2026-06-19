@@ -53,12 +53,14 @@ body, html {
 /* ==========================================
    3. 頂部導航欄 (Header) 與下拉選單
 ========================================== */
+/* 修改後 */
 #app-header {
     height: 60px; background: var(--header-bg);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     display: flex; justify-content: space-between; align-items: center;
     padding: 0 15px; position: fixed; top: 0; left: 0; width: 100%;
-    z-index: 100; border-bottom: 1px solid var(--border-color);
+    z-index: 500; /* 🌟 提升至 500，強迫所有顯示方式絕對高於下方的紀錄按鈕與面板 */
+    border-bottom: 1px solid var(--border-color);
     transition: transform 0.3s ease-in-out;
 }
 #app-header.hide-up { transform: translateY(-100%); }
@@ -131,10 +133,12 @@ body, html {
 /* ==========================================
    4. 側邊欄 (Sidebar)
 ========================================== */
+/* 修改後 */
 .sidebar {
     position: fixed; top: 0; left: 0; width: 280px; height: 100%;
     background: var(--modal-bg); border-right: 1px solid var(--border-color);
-    z-index: 200; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000; /* 🌟 從 200 提升至 1000，成為全畫面絕對最高優先級 */
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex; flex-direction: column; justify-content: space-between; padding: 20px 15px;
 }
 .sidebar.closed { transform: translateX(-100%); }
@@ -227,6 +231,28 @@ body, html {
 .msg-content p { margin-bottom: 10px; line-height: 1.6; }
 .msg-content strong { color: var(--primary-color); }
 
+/* 🌟 修復 1：Markdown 超連結，綁定主題變數，杜絕瀏覽器預設深藍色 */
+.msg-content a {
+    color: var(--primary-color);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-bottom 0.2s;
+}
+.msg-content a:hover {
+    border-bottom: 1px solid var(--primary-color);
+}
+
+/* 🌟 補齊：Markdown 引言 (Blockquote) 的防禦性排版 */
+.msg-content blockquote {
+    border-left: 4px solid var(--primary-color);
+    margin: 10px 0;
+    padding: 8px 16px;
+    background-color: rgba(128, 128, 128, 0.1); /* 半透明底色，深淺模式皆適用 */
+    color: var(--text-color);
+    opacity: 0.85; /* 微微刷淡，與正文做出層次區別 */
+    border-radius: 0 8px 8px 0;
+}
+
 /* ==========================================
    6. 輸入框與上拉式上傳選單
 ========================================== */
@@ -300,17 +326,22 @@ body, html {
     transform: translateX(0) translateY(0);
 }
 
-/* 右側邊緣的按鈕提示框靠右對齊，防切斷 */
+/* 修改後：加入 #btn-l2d-history 進行右邊界磁吸防護 */
 #chat-send[data-tooltip]::after,
 .sidebar-close-btn[data-tooltip]::after,
 #btn-mode-live2d[data-tooltip]::after,
-#btn-return-sg[data-tooltip]::after {
-    left: auto; right: 0; transform: translateX(0) translateY(-5px);
+#btn-return-sg[data-tooltip]::after,
+#btn-l2d-history[data-tooltip]::after { /* 🌟 新增此行 */
+    left: auto; 
+    right: 0; 
+    transform: translateX(0) translateY(-5px);
 }
+
 #chat-send[data-tooltip]:hover::after,
 .sidebar-close-btn[data-tooltip]:hover::after,
 #btn-mode-live2d[data-tooltip]:hover::after,
-#btn-return-sg[data-tooltip]:hover::after {
+#btn-return-sg[data-tooltip]:hover::after,
+#btn-l2d-history[data-tooltip]:hover::after { /* 🌟 新增此行 */
     transform: translateX(0) translateY(0);
 }
 
@@ -663,8 +694,9 @@ body, html {
 .hljs-built_in, .hljs-type, .hljs-class {
     color: #e5c07b !important; /* 內建函數、類別 (print, class): 質感暖金黃 */
 }
+/* 修改後：提亮灰度，確保在深色背景下不瞎眼 */
 .hljs-comment, .hljs-quote {
-    color: #5c6370 !important; font-style: italic; /* 註解 // comment: 沉穩低調灰 + 斜體 */
+    color: #8b92a5 !important; font-style: italic; 
 }
 .hljs-params, .hljs-property {
     color: #ef596f !important; /* 參數與屬性: 珊瑚魅惑紅 */
@@ -797,4 +829,119 @@ body, html {
 @keyframes l2d-pulse {
     0% { opacity: 0.6; }
     100% { opacity: 1; }
+}
+
+/* =======================================================
+   🌟 Live2D 對話紀錄懸浮系統 (Floating History Panel)
+======================================================= */
+/* 右上方觸發按鈕 */
+/* 修改後 */
+.l2d-floating-btn {
+    position: absolute;
+    top: 76px; 
+    right: 20px;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--header-bg);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    cursor: pointer;
+    z-index: 406; /* 🌟 從 106 改為 406，使其乖乖待在 Header (500) 下方 */
+    display: flex; justify-content: center; align-items: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* 電腦版高級懸浮窗 */
+.l2d-history-panel {
+    position: absolute;
+    top: 76px;
+    right: 20px;
+    width: 350px;
+    bottom: 150px; /* 避開下方控制台 */
+    background: var(--header-bg);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-radius: 20px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.25);
+    border: 1px solid var(--border-color);
+    display: flex; flex-direction: column;
+    z-index: 405;
+    transform-origin: top right;
+    transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.15); /* 帶有微彈性的流暢曲線 */
+    
+    /* 🌟 新增：確保顯示狀態 */
+    opacity: 1; transform: scale(1); visibility: visible;
+    overflow: hidden;
+}
+.l2d-history-panel.hidden {
+    opacity: 0; transform: scale(0.8); pointer-events: none;
+    
+    /* 🌟 核心破解：覆蓋全域的 display: none，改用 visibility 隱藏，讓過渡動畫得以完美運行！ */
+    display: flex !important; 
+    visibility: hidden;
+}
+
+/* 內部排版與時間軸特效 */
+.l2d-history-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex; justify-content: space-between; align-items: center;
+}
+.l2d-history-header h3 { font-size: 16px; margin: 0; }
+.close-panel-btn { font-size: 20px; opacity: 0.6; }
+.close-panel-btn:hover { opacity: 1; transform: scale(1.1); }
+
+.l2d-history-content {
+    flex: 1; overflow-y: auto; padding: 20px;
+    display: flex; flex-direction: column; gap: 20px;
+}
+.l2d-log-item {
+    display: flex; flex-direction: column;
+    border-left: 3px solid #7B4B3D;
+    padding-left: 14px; position: relative;
+}
+.l2d-log-item::before {
+    content: ''; position: absolute; left: -6px; top: 2px;
+    width: 9px; height: 9px; border-radius: 50%;
+    background: #7B4B3D; box-shadow: 0 0 0 3px var(--header-bg);
+}
+.l2d-log-item.log-user { border-left-color: #87CEEB; }
+.l2d-log-item.log-user::before { background: #87CEEB; }
+
+.l2d-log-role { font-size: 12px; font-weight: bold; color: gray; margin-bottom: 6px; }
+.l2d-log-text { font-size: 15px; line-height: 1.6; color: var(--text-color); }
+
+/* 🌟 核心防禦：氣泡動態寬度平滑過渡 */
+.live2d-bubble {
+    transition: max-width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+/* 📱 手機版：完美懸浮於標題列與控制島之間，保留微透黑背景 */
+@media screen and (max-width: 768px) {
+    .l2d-history-panel {
+        position: absolute; /* 改為絕對定位，不再 fixed 覆蓋全螢幕 */
+        top: 65px; /* 緊貼在頂部 60px 的標題列下方 */
+        left: 15px; 
+        right: 15px;
+        width: auto; 
+        height: auto;
+        bottom: 165px; /* 完美避開底部巨大控制島 */
+        border-radius: 20px; 
+        border: 1px solid var(--border-color);
+        z-index: 105;
+        background: var(--header-bg); /* 🌟 保持與電腦版一樣的微透黑背景 */
+        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        transform-origin: top right;
+        visibility: visible;
+    }
+    .l2d-history-panel.hidden {
+        transform: scale(0.85); /* 手機版也是優雅地縮放消失 */
+        opacity: 0;
+        display: flex !important; 
+        visibility: hidden;
+    }
+    #btn-l2d-history {
+        top: 70px; right: 15px; /* 手機版按鈕位置微調 */
+    }
 }
