@@ -28,7 +28,7 @@ app = FastAPI()
 # ==========================================
 # 🌟 雲端資料庫驗證初始化 (MongoDB Atlas)
 # ==========================================
-MONGO_URI = os.environ.get("MONGO_URI", "mongodb+srv://hiruynk:Ynk39.,.@vioast.j3m5blp.mongodb.net/")
+MONGO_URI = os.environ.get("MONGO_URI")
 users_collection = None
 
 try:
@@ -160,7 +160,7 @@ def init_vector_db():
     collections = {}
     
     # 從環境變數讀取 API Key
-    api_key = os.getenv("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
+    api_key = os.getenv("GEMINI_API_KEY_FREE")
     embedding_func = GeminiEmbeddingFunction(api_key=api_key)
     
     def process_data(data_list, collection_name, prefix_msg):
