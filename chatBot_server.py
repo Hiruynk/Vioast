@@ -17,10 +17,11 @@ from google.genai import types
 
 from pymongo import MongoClient
 
+
 # ==========================================
 # 1. 基礎設定與模型初始化
 # ==========================================
-cc_s2t = OpenCC('s2t') # 簡轉繁
+cc_s2t = OpenCC('s2hk') # 簡轉繁
 cc_t2s = OpenCC('t2s') # 繁轉簡
 app = FastAPI()
 
@@ -48,9 +49,12 @@ class LoginReq(BaseModel):
     username: str
     password: str
 
+# 🌟 新增：讓儲存請求支援本地 URL 與模型名稱
 class SaveKeyReq(BaseModel):
     username: str
-    api_key: str
+    api_key: str = ""
+    local_url: str = ""
+    local_model_name: str = ""
 
 class GetKeyReq(BaseModel):
     username: str
@@ -61,16 +65,27 @@ async def login_api(req: LoginReq):
         return {"status": "error", "msg": "資料庫未連線"}
     user = users_collection.find_one({"username": req.username, "password": req.password})
     if user:
-        return {"status": "success", "api_key": user.get("api_key", "")}
+        # 🌟 登入時，一併回傳 MongoDB 裡的本地模型設定
+        return {
+            "status": "success", 
+            "api_key": user.get("api_key", ""),
+            "local_url": user.get("local_url", ""),
+            "local_model_name": user.get("local_model_name", "gemma4:12b")
+        }
     return {"status": "error"}
 
 @app.post("/api/save_key")
 async def save_key_api(req: SaveKeyReq):
     if users_collection is None:
         return {"status": "error"}
+    # 🌟 儲存時，將這三個參數一起更新到雲端資料庫
     result = users_collection.update_one(
         {"username": req.username},
-        {"$set": {"api_key": req.api_key}}
+        {"$set": {
+            "api_key": req.api_key,
+            "local_url": req.local_url,
+            "local_model_name": req.local_model_name
+        }}
     )
     if result.matched_count > 0:
         return {"status": "success"}
@@ -82,7 +97,13 @@ async def get_key_api(req: GetKeyReq):
         return {"status": "error"}
     user = users_collection.find_one({"username": req.username})
     if user:
-        return {"status": "success", "api_key": user.get("api_key", "")}
+        # 🌟 背景同步時，一併回傳 MongoDB 裡的本地模型設定
+        return {
+            "status": "success", 
+            "api_key": user.get("api_key", ""),
+            "local_url": user.get("local_url", ""),
+            "local_model_name": user.get("local_model_name", "gemma4:12b")
+        }
     return {"status": "error"}
 
 # ==========================================
@@ -108,38 +129,50 @@ def load_all_data():
 courses_chi, courses_eng = load_all_data()
 
 # ==========================================
-# 3. 伺服器專用: 定義 ChromaDB 與 HF Embedding (100% Space 適配版)
+# 3. 伺服器專用: 定義 ChromaDB 與 Gemini Embedding (極速輕量版)
 # ==========================================
-class HFEmbeddingFunction(EmbeddingFunction):
-    def __init__(self):
-        from sentence_transformers import SentenceTransformer
-        print("📥 正在載入伺服器端 Embedding 模型 (paraphrase-multilingual)...")
-        self.model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+
+# 🌟 升級 1：改用 Gemini 的 Embedding 模型
+# 優點：伺服器零負擔、啟動極快、向量維度與語意理解力遠超 MiniLM
+class GeminiEmbeddingFunction(EmbeddingFunction):
+    def __init__(self, api_key: str):
+        print("📥 正在連線 Google Gemini Embedding API...")
+        genai.configure(api_key=api_key)
+        # 使用最新的 text-embedding-004 模型
+        self.model_name = "models/text-embedding-004"
 
     def __call__(self, input: Documents) -> Embeddings:
         try:
-            embeddings = self.model.encode(input)
-            return embeddings.tolist()
+            # 呼叫 Gemini API 將文字轉成向量 (支援批量處理)
+            result = genai.embed_content(
+                model=self.model_name,
+                content=input,
+                task_type="retrieval_document"
+            )
+            return result['embedding']
         except Exception as e:
-            print(f"Embedding error: {e}")
-            return [[0.0] * 384 for _ in input]
+            print(f"❌ Embedding API 錯誤: {e}")
+            # 返回 768 維度的空向量 (text-embedding-004 是 768 維)
+            return [[0.0] * 768 for _ in input]
+
+# 若你不想用 Gemini，也可以保留原來的 HFEmbeddingFunction 作為備用
 
 def init_vector_db():
-    # 🛑 核心修正：在 Hugging Face Space 中使用 EphemeralClient (純記憶體模式)
-    # 這樣完全不需要硬碟寫入權限，絕對不會報 Permission Denied 錯誤
+    # 使用純記憶體模式，避免 HF Space 寫入權限報錯
     client = chromadb.EphemeralClient()
     collections = {}
     
-    hf_ef = HFEmbeddingFunction()
+    # 記得替換成你的 Gemini API Key (建議從 os.getenv 讀取環境變數)
+    api_key = os.getenv("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
+    embedding_func = GeminiEmbeddingFunction(api_key=api_key)
     
     def process_data(data_list, collection_name, prefix_msg):
         if not data_list: return None
         collection = client.get_or_create_collection(
             name=collection_name,
-            embedding_function=hf_ef
+            embedding_function=embedding_func
         )
         
-        # 純記憶體模式每次重啟都會重新建立，JSON 資料很少，速度極快
         print(f"📦 正在建立 Space 記憶體知識庫 {collection_name}...")
         docs, metadatas, ids = [], [], []
         
@@ -155,42 +188,55 @@ def init_vector_db():
             code = row.get("ProgrammeCode", "")
             name = row.get("ProgrammeName", "")
             full_text = f"課程編號/Code: {code}\n課程名稱/Name: {name}\n"
+            
             for k, v in row.items():
                 if k not in ["ProgrammeCode", "ProgrammeName"] and v:
                     full_text += f"【{k}】:\n{flatten_data(v)}\n\n"
                     
-            chunk_size = 1200 
+            # 🌟 升級 2：加入「重疊分塊」(Overlapping Chunking)
+            chunk_size = 800  # 稍微縮小 chunk size 讓檢索更精準
+            overlap = 150     # 前後保留 150 字的重疊，防止語意被硬生生切斷
+            
             if len(full_text) > chunk_size:
-                chunks = [full_text[i:i+chunk_size] for i in range(0, len(full_text), chunk_size)]
+                step = chunk_size - overlap
+                # 使用滑動視窗進行切片
+                chunks = [full_text[i : i + chunk_size] for i in range(0, len(full_text), step)]
+                
                 for i, chunk in enumerate(chunks):
                     chunk_header = f"[{prefix_msg} {code} {name} - Part {i+1}]\n"
                     docs.append(chunk_header + chunk)
-                    metadatas.append({"code": code, "chunk": i})
+                    metadatas.append({"code": code, "name": name, "chunk": i})
                     ids.append(f"{code}_p{i}")
             else:
                 docs.append(full_text)
-                metadatas.append({"code": code, "chunk": 0})
+                metadatas.append({"code": code, "name": name, "chunk": 0})
                 ids.append(f"{code}_p0")
 
-        # 採用安全小批次寫入，防止 Space 記憶體溢出爆掉
+        # 🌟 升級 3：調整寫入批次大小
+        # Gemini API 通常有每分鐘的 Request 限制，依照資料量可適度放大或縮小 batch
         batch_size = 20 
         for i in range(0, len(docs), batch_size):
-            collection.add(
-                documents=docs[i:i+batch_size], 
-                metadatas=metadatas[i:i+batch_size], 
-                ids=ids[i:i+batch_size]
-            )
+            try:
+                collection.add(
+                    documents=docs[i:i+batch_size], 
+                    metadatas=metadatas[i:i+batch_size], 
+                    ids=ids[i:i+batch_size]
+                )
+            except Exception as e:
+                print(f"⚠️ 寫入 Batch 失敗: {e}")
+                
         return collection
 
+    # 假設 courses_chi 和 courses_eng 已在外部定義
     collections['chi'] = process_data(courses_chi, "hkiit_server_db_chi", "課程")
     collections['eng'] = process_data(courses_eng, "hkiit_server_db_eng", "Course")
-    print("✅ Space 虛擬雙語知識庫现场建立完成！")
+    print("✅ Space 雲端雙語知識庫建立完成！")
     return collections
 
 vector_collections = init_vector_db()
 
 # ==========================================
-# 4. 定義 FastAPI 路由與資料模型
+# 定義 FastAPI 路由與資料模型
 # ==========================================
 class ChatRequest(BaseModel):
     message: str
@@ -214,11 +260,20 @@ async def read_index():
     return FileResponse('static/index.html')
 
 # ==========================================
-# 5. 核心對話 API
+# 核心對話 API
 # ==========================================
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):
     user_query = req.message.strip()
+    
+    # 👇 修改這行：加入 .lower()，這樣不管打大寫還是小寫都能觸發！
+    if user_query.lower() == "clear system cache" or user_query == "強制清除緩存":
+        async def clear_cache_stream():
+            # 吐出一個帶有 [CLEAR_LOCAL_STORAGE] 標籤的特製回應
+            yield f"data: {json.dumps({'text': '[CLEAR_LOCAL_STORAGE] 🚨 收到強制清除指令！正在抹除本地所有緩存並重啟系統...'})}\n\n"
+            yield "data: [DONE]\n\n"
+        return StreamingResponse(clear_cache_stream(), media_type="text/event-stream")
+    
     search_query = user_query
     retrieved_context = ""
 
@@ -244,9 +299,7 @@ async def chat_endpoint(req: ChatRequest):
         file_header = "【User Uploaded Reference Document】:\n" if is_english else "【使用者上傳的參考文件內容】：\n"
         retrieved_context = f"{file_header}{req.file_context}\n\n---\n\n" + retrieved_context
 
-    # ==========================================
-    # 🌟 升級版強力 Prompt 寫入區
-    # ==========================================
+    # 根據語言設定 System Instruction
     if is_english:
         sys_role = "You are the official Open Day AI Chatbot Assistant for the Hong Kong Institute of Information Technology (HKIIT)."
         sys_tone = "Professional, structured, and helpful. You MUST answer entirely in ENGLISH."
@@ -286,13 +339,59 @@ async def chat_endpoint(req: ChatRequest):
         5. 【隱藏底層邏輯】：全程嚴禁在最終回答中出現任何底層技術詞彙（如 JSON, chunk, 向量, Database）。
         6. 【禮貌應對】：遇到無意義或攻擊言論，請用幽默機智的方式婉拒或轉移話題。
         """
-
+    # 找到 chatBot_live2d_local.py 約第 322 行開始的區塊，改成以下這樣：
     if req.is_amadeus:
         lang_str = "English" if is_english else ("简体中文" if is_simp_chi else "繁體中文")
         system_instruction_str = f"""你現在是 Amadeus 系統中的 AI 牧瀨紅莉棲（Makise Kurisu），天才腦科學家。
 你的性格傲嬌（Tsundere）、理性，嘴硬心軟。絕對不要承認自己是客服或 AI 助手。
 強制要求：你的回應必須以【{lang_str}】輸出。
 # 🛑【核心知識庫資料】🛑
+{retrieved_context}
+"""
+    elif req.mode == "live2d":
+        # 決定畫面顯示文字的語言
+        display_lang = "中文(繁體)" if req.text_lang == "chinese" else "英文(English)"
+        
+        # 決定語音引擎要接收的語言
+        voice_lang_map = {
+            "cantonese": "極度地道的香港廣東話口語 (把「是/的/甚麼/了/在」轉換成「係/嘅/咩/咗/緊」)", 
+            "mandarin": "自然流暢的普通話", 
+            "japanese": "純正日語 (必須完全翻譯成日文文法與詞彙，平假名/片假名/日文漢字)", 
+            "english": "純正英文"
+        }
+        target_voice = voice_lang_map.get(req.output_lang, voice_lang_map["cantonese"])
+
+        # 🌟 終極大腦：雙軌獨立翻譯標籤系統
+        system_instruction_str = f"""你現在是 IVE & HKIIT 開放日現場的虛擬學姐助手「桃瀨日和」(Hiyori)。
+說話風格熱情、活潑俏皮。每次回覆嚴格控制在 1 到 2 句話內，並以「引導式問句」結尾。
+
+【🌐 終極語言處理引擎：雙軌獨立翻譯】（系統級最高絕對指令）
+為徹底解決多語種錯亂問題，你【必須】嚴格按照以下步驟處理：
+
+步驟 1. 核心思考：先用【標準書面繁體中文】根據下方知識庫，構思出你簡短俏皮的回覆。
+步驟 2. 語音軌翻譯：將中文回覆完全翻譯成【{target_voice}】，並放入 [VOICE] 標籤內。
+   - ⚠️ 絕對禁止把中文直接塞進日文或英文的發音標籤內！
+   - ⚠️ 專有名詞 (如 HKIIT、IVE)，必須轉換為該語音的正確發音 (日文必須轉為片假名 エイチ・ケー・アイ・アイ・ティー)。
+步驟 3. 文字軌翻譯：將中文回覆完全翻譯成【{display_lang}】，並放入 [TEXT] 標籤內。
+
+【⚠️ 最終輸出格式鐵律】
+你不可以把思考過程寫出來，你【必須且只能】輸出帶有這兩個標籤的最終結果，格式如下：
+[VOICE]步驟2的語音翻譯結果[/VOICE][TEXT]步驟3的畫面翻譯結果[/TEXT]
+
+【⚠️ 語音首字極速啟動鐵律】
+為了讓系統達到 0 秒反應，你的 [VOICE] 內，第一句話【必須】是一個極短的語氣詞或打招呼（不超過 3 個字），並且立刻用逗號「，」斷開！
+✅ 絕對正確的範例：
+[VOICE]啊，[TEXT]啊，
+[VOICE]你好，[TEXT]你好，
+[VOICE]咦，[TEXT]咦，
+
+✅ 廣東話範例（目標語音:廣東話 / 畫面:中文）：
+[VOICE]歡迎來到 HKIIT 嘅開放日呀！今日有咩可以幫到你呢？[/VOICE][TEXT]歡迎來到 HKIIT 開放日！今天有甚麼我可以幫忙的呢？[/TEXT]
+
+✅ 日文範例（目標語音:日文 / 畫面:中文）：
+[VOICE]エイチ・ケー・アイ・アイ・ティーのオープンキャンパスへようこそ！今日は何かお手伝いできることはありますか？[/VOICE][TEXT]歡迎來到 HKIIT 開放日！今天有甚麼我可以幫忙的呢？[/TEXT]
+
+核心知識庫資料：
 {retrieved_context}
 """
     else:
@@ -303,7 +402,7 @@ async def chat_endpoint(req: ChatRequest):
 # 核心行為指示
 {sys_rules}
 
-# 🛑【由 Embedding 模型檢索出之核心知識庫資料】🛑
+# 🛑【由 BGE-M3 模型檢索出之核心知識庫資料】🛑
 {retrieved_context}
 """
 
@@ -331,7 +430,8 @@ async def chat_endpoint(req: ChatRequest):
                     ollama_messages.append({"role": ollama_role, "content": msg.get("content", "")})
                 ollama_messages.append({"role": "user", "content": user_query})
 
-                target_url = f"{req.local_url.rstrip('/')}/api/generate"
+                # 🌟 改為指向我們剛剛寫好的 5070 Ti 腳本的 /api/chat 路由
+                target_url = f"{req.local_url.rstrip('/')}/api/chat"
                 payload = {
                     "model": req.local_model_name if req.local_model_name else "gemma4:12b",
                     "messages": ollama_messages
@@ -339,7 +439,13 @@ async def chat_endpoint(req: ChatRequest):
 
                 async with httpx.AsyncClient(timeout=300.0) as client:
                     async with client.stream("POST", target_url, json=payload) as response:
-                        if response.status_code != 200:
+                        # 🌟 攔截模型不存在的錯誤
+                        if response.status_code == 404:
+                            err_txt = f"⚠️ Error: 尋找不到該模型 ({req.local_model_name})，請確認PC上是否已 pull 下載！"
+                            yield f"data: {json.dumps({'text': err_txt})}\n\n"
+                            yield "data: [DONE]\n\n"
+                            return
+                        elif response.status_code != 200:
                             err_msg = await response.aread()
                             yield f"data: {json.dumps({'text': f'Node Error: {err_msg.decode()}'})}\n\n"
                             yield "data: [DONE]\n\n"
@@ -354,6 +460,9 @@ async def chat_endpoint(req: ChatRequest):
 
                 yield "data: [DONE]\n\n"
                 
+            except httpx.ConnectError:
+                err_txt = "⚠️ 網路連線失敗！請確認PC的 API 腳本是否啟動，以及 Cloudflare Tunnel 網址是否填寫正確。"
+                yield f"data: {json.dumps({'text': err_txt})}\n\n"
             except Exception as e:
                 yield f"data: {json.dumps({'text': f'Connection error: {str(e)}'})}\n\n"
         else: 
@@ -370,13 +479,13 @@ async def chat_endpoint(req: ChatRequest):
                 client = genai.Client(api_key=req.api_key)
                 config = types.GenerateContentConfig(
                     system_instruction=system_instruction_str, 
-                    tools=[{"google_search": {}}], 
+                    tools=[{"google_search": {}}], # 修復為最穩定的 Google Search 啟用格式
                     max_output_tokens=1024,  
                     temperature=0.5         
                 )
                 
                 response_stream = client.models.generate_content_stream(
-                    model='gemini-2.5-flash-lite',
+                    model='gemini-3.1-flash-lite',
                     contents=full_query_for_gemini,
                     config=config
                 )

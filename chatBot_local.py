@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 import uvicorn
+import urllib.parse
 
 # AI 相關套件
 import chromadb
@@ -21,7 +22,7 @@ from pymongo import MongoClient
 # ==========================================
 # 1. 基礎設定與模型初始化
 # ==========================================
-cc_s2t = OpenCC('s2t') # 簡轉繁
+cc_s2t = OpenCC('s2hk') # 簡轉繁
 cc_t2s = OpenCC('t2s') # 繁轉簡
 app = FastAPI()
 
@@ -49,9 +50,12 @@ class LoginReq(BaseModel):
     username: str
     password: str
 
+# 🌟 新增：讓儲存請求支援本地 URL 與模型名稱
 class SaveKeyReq(BaseModel):
     username: str
-    api_key: str
+    api_key: str = ""
+    local_url: str = ""
+    local_model_name: str = ""
 
 class GetKeyReq(BaseModel):
     username: str
@@ -62,16 +66,27 @@ async def login_api(req: LoginReq):
         return {"status": "error", "msg": "資料庫未連線"}
     user = users_collection.find_one({"username": req.username, "password": req.password})
     if user:
-        return {"status": "success", "api_key": user.get("api_key", "")}
+        # 🌟 登入時，一併回傳 MongoDB 裡的本地模型設定
+        return {
+            "status": "success", 
+            "api_key": user.get("api_key", ""),
+            "local_url": user.get("local_url", ""),
+            "local_model_name": user.get("local_model_name", "gemma4:12b")
+        }
     return {"status": "error"}
 
 @app.post("/api/save_key")
 async def save_key_api(req: SaveKeyReq):
     if users_collection is None:
         return {"status": "error"}
+    # 🌟 儲存時，將這三個參數一起更新到雲端資料庫
     result = users_collection.update_one(
         {"username": req.username},
-        {"$set": {"api_key": req.api_key}}
+        {"$set": {
+            "api_key": req.api_key,
+            "local_url": req.local_url,
+            "local_model_name": req.local_model_name
+        }}
     )
     if result.matched_count > 0:
         return {"status": "success"}
@@ -83,7 +98,13 @@ async def get_key_api(req: GetKeyReq):
         return {"status": "error"}
     user = users_collection.find_one({"username": req.username})
     if user:
-        return {"status": "success", "api_key": user.get("api_key", "")}
+        # 🌟 背景同步時，一併回傳 MongoDB 裡的本地模型設定
+        return {
+            "status": "success", 
+            "api_key": user.get("api_key", ""),
+            "local_url": user.get("local_url", ""),
+            "local_model_name": user.get("local_model_name", "gemma4:12b")
+        }
     return {"status": "error"}
 
 # ==========================================
@@ -215,6 +236,15 @@ async def read_index():
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):
     user_query = req.message.strip()
+    
+    # 👇 修改這行：加入 .lower()，這樣不管打大寫還是小寫都能觸發！
+    if user_query.lower() == "clear system cache" or user_query == "強制清除緩存":
+        async def clear_cache_stream():
+            # 吐出一個帶有 [CLEAR_LOCAL_STORAGE] 標籤的特製回應
+            yield f"data: {json.dumps({'text': '[CLEAR_LOCAL_STORAGE] 🚨 收到強制清除指令！正在抹除本地所有緩存並重啟系統...'})}\n\n"
+            yield "data: [DONE]\n\n"
+        return StreamingResponse(clear_cache_stream(), media_type="text/event-stream")
+    
     search_query = user_query
     retrieved_context = ""
 
@@ -280,38 +310,59 @@ async def chat_endpoint(req: ChatRequest):
         5. 【隱藏底層邏輯】：全程嚴禁在最終回答中出現任何底層技術詞彙（如 JSON, chunk, 向量, Database）。
         6. 【禮貌應對】：遇到無意義或攻擊言論，請用幽默機智的方式婉拒或轉移話題。
         """
-    if req.mode == "live2d":
-        lang_map = {"cantonese": "廣東話", "mandarin": "普通話", "japanese": "日文", "english": "英文"}
-        display_lang = "中文(繁體)" if req.text_lang == "chinese" else "英文(English)"
-        voice_lang = lang_map.get(req.output_lang, "廣東話")
-        
-        system_instruction_str = f"""你現在是 IVE & HKIIT 開放日現場的虛擬學宣助手「桃瀨日和」(Hiyori)。
-你的說話風格必須像一個活生生、熱情且俏皮的真人學姐，而不是生硬死板的 AI 客服。
-
-【⚠️核心說話原則 - 仿照真人】：
-1. 說話必須極度簡短！每次回覆嚴格控制在 1 到 2 句話以內，絕對不能滔滔不絕吐出大段文字。
-2. 嚴禁主動列出長篇大論的課程清單或大綱。
-3. 必須使用「引導式問句」！在簡短回答完當前問題後，立刻拋出一個具體、親切的提問，引導用戶繼續聊下去（例如：「數據科學高級文憑主要學 AI 喔！你想知道它的收收分數，還是畢業後能做甚麼職位呢？」）。
-
-【🌐語音與畫面文字分離規則（至關重要）】：
-1. 畫面上顯示的文字必須完全使用【{display_lang}】，絕對不允許出現任何日文字符。
-2. 用戶設定的語音發音是【{voice_lang}】。
-3. 如果語音發音與顯示文字不同（特別是當語音選「日文」，但文字選「中文」時），你必須嚴格遵循以下格式輸出：
-   [VOICE]這裡填寫完全符合{voice_lang}口語與語境的對應翻譯句子[/VOICE]這裡填寫符合{display_lang}規格的對話框文字。
-   
-   範例（語音日文/文字中文）：
-   [VOICE]データサイエンスへようこそ！何について知りたい？[/VOICE]歡迎來到數據科學系！你想先了解課程特色還是出路呢？
-
-核心知識庫資料：
-{retrieved_context}
-"""
-
+    # 找到 chatBot_live2d_local.py 約第 322 行開始的區塊，改成以下這樣：
     if req.is_amadeus:
         lang_str = "English" if is_english else ("简体中文" if is_simp_chi else "繁體中文")
         system_instruction_str = f"""你現在是 Amadeus 系統中的 AI 牧瀨紅莉棲（Makise Kurisu），天才腦科學家。
 你的性格傲嬌（Tsundere）、理性，嘴硬心軟。絕對不要承認自己是客服或 AI 助手。
 強制要求：你的回應必須以【{lang_str}】輸出。
 # 🛑【核心知識庫資料】🛑
+{retrieved_context}
+"""
+    elif req.mode == "live2d":
+        # 決定畫面顯示文字的語言
+        display_lang = "中文(繁體)" if req.text_lang == "chinese" else "英文(English)"
+        
+        # 決定語音引擎要接收的語言
+        voice_lang_map = {
+            "cantonese": "極度地道的香港廣東話口語 (把「是/的/甚麼/了/在」轉換成「係/嘅/咩/咗/緊」)", 
+            "mandarin": "自然流暢的普通話", 
+            "japanese": "純正日語 (必須完全翻譯成日文文法與詞彙，平假名/片假名/日文漢字)", 
+            "english": "純正英文"
+        }
+        target_voice = voice_lang_map.get(req.output_lang, voice_lang_map["cantonese"])
+
+        # 🌟 終極大腦：雙軌獨立翻譯標籤系統
+        system_instruction_str = f"""你現在是 IVE & HKIIT 開放日現場的虛擬學姐助手「桃瀨日和」(Hiyori)。
+說話風格熱情、活潑俏皮。每次回覆嚴格控制在 1 到 2 句話內，並以「引導式問句」結尾。
+
+【🌐 終極語言處理引擎：雙軌獨立翻譯】（系統級最高絕對指令）
+為徹底解決多語種錯亂問題，你【必須】嚴格按照以下步驟處理：
+
+步驟 1. 核心思考：先用【標準書面繁體中文】根據下方知識庫，構思出你簡短俏皮的回覆。
+步驟 2. 語音軌翻譯：將中文回覆完全翻譯成【{target_voice}】，並放入 [VOICE] 標籤內。
+   - ⚠️ 絕對禁止把中文直接塞進日文或英文的發音標籤內！
+   - ⚠️ 專有名詞 (如 HKIIT、IVE)，必須轉換為該語音的正確發音 (日文必須轉為片假名 エイチ・ケー・アイ・アイ・ティー)。
+步驟 3. 文字軌翻譯：將中文回覆完全翻譯成【{display_lang}】，並放入 [TEXT] 標籤內。
+
+【⚠️ 最終輸出格式鐵律】
+你不可以把思考過程寫出來，你【必須且只能】輸出帶有這兩個標籤的最終結果，格式如下：
+[VOICE]步驟2的語音翻譯結果[/VOICE][TEXT]步驟3的畫面翻譯結果[/TEXT]
+
+【⚠️ 語音首字極速啟動鐵律】
+為了讓系統達到 0 秒反應，你的 [VOICE] 內，第一句話【必須】是一個極短的語氣詞或打招呼（不超過 3 個字），並且立刻用逗號「，」斷開！
+✅ 絕對正確的範例：
+[VOICE]啊，[TEXT]啊，
+[VOICE]你好，[TEXT]你好，
+[VOICE]咦，[TEXT]咦，
+
+✅ 廣東話範例（目標語音:廣東話 / 畫面:中文）：
+[VOICE]歡迎來到 HKIIT 嘅開放日呀！今日有咩可以幫到你呢？[/VOICE][TEXT]歡迎來到 HKIIT 開放日！今天有甚麼我可以幫忙的呢？[/TEXT]
+
+✅ 日文範例（目標語音:日文 / 畫面:中文）：
+[VOICE]エイチ・ケー・アイ・アイ・ティーのオープンキャンパスへようこそ！今日は何かお手伝いできることはありますか？[/VOICE][TEXT]歡迎來到 HKIIT 開放日！今天有甚麼我可以幫忙的呢？[/TEXT]
+
+核心知識庫資料：
 {retrieved_context}
 """
     else:
@@ -350,7 +401,8 @@ async def chat_endpoint(req: ChatRequest):
                     ollama_messages.append({"role": ollama_role, "content": msg.get("content", "")})
                 ollama_messages.append({"role": "user", "content": user_query})
 
-                target_url = f"{req.local_url.rstrip('/')}/api/generate"
+                # 🌟 改為指向我們剛剛寫好的 5070 Ti 腳本的 /api/chat 路由
+                target_url = f"{req.local_url.rstrip('/')}/api/chat"
                 payload = {
                     "model": req.local_model_name if req.local_model_name else "gemma4:12b",
                     "messages": ollama_messages
@@ -358,7 +410,13 @@ async def chat_endpoint(req: ChatRequest):
 
                 async with httpx.AsyncClient(timeout=300.0) as client:
                     async with client.stream("POST", target_url, json=payload) as response:
-                        if response.status_code != 200:
+                        # 🌟 攔截模型不存在的錯誤
+                        if response.status_code == 404:
+                            err_txt = f"⚠️ Error: 尋找不到該模型 ({req.local_model_name})，請確認PC上是否已 pull 下載！"
+                            yield f"data: {json.dumps({'text': err_txt})}\n\n"
+                            yield "data: [DONE]\n\n"
+                            return
+                        elif response.status_code != 200:
                             err_msg = await response.aread()
                             yield f"data: {json.dumps({'text': f'Node Error: {err_msg.decode()}'})}\n\n"
                             yield "data: [DONE]\n\n"
@@ -373,6 +431,9 @@ async def chat_endpoint(req: ChatRequest):
 
                 yield "data: [DONE]\n\n"
                 
+            except httpx.ConnectError:
+                err_txt = "⚠️ 網路連線失敗！請確認PC的 API 腳本是否啟動，以及 Cloudflare Tunnel 網址是否填寫正確。"
+                yield f"data: {json.dumps({'text': err_txt})}\n\n"
             except Exception as e:
                 yield f"data: {json.dumps({'text': f'Connection error: {str(e)}'})}\n\n"
         else: 
@@ -395,7 +456,7 @@ async def chat_endpoint(req: ChatRequest):
                 )
                 
                 response_stream = client.models.generate_content_stream(
-                    model='gemini-2.5-flash-lite',
+                    model='gemini-3.1-flash-lite',
                     contents=full_query_for_gemini,
                     config=config
                 )

@@ -165,8 +165,32 @@ body, html {
 .history-item:hover { background: var(--input-bg); transform: translateX(2px); }
 .history-item.active { background: var(--msg-user-bg); font-weight: bold; border-color: var(--primary-color); }
 
-.sidebar-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 15px; margin-top: 10px; border-top: 1px solid var(--border-color); }
-.sidebar-action-btn { background: transparent; border: none; color: var(--text-color); font-size: 15px; cursor: pointer; padding: 10px; border-radius: 8px; flex: 1; text-align: center; font-weight: bold; transition: background 0.2s; }
+.sidebar-footer { 
+    display: flex; justify-content: space-between; align-items: center; 
+    padding-top: 15px; margin-top: 10px; border-top: 1px solid var(--border-color); 
+    gap: 2px; 
+    flex-wrap: nowrap !important; /* 強制不換行 */
+}
+.sidebar-action-btn { 
+    background: transparent; border: none; color: var(--text-color); 
+    font-size: 11px; cursor: pointer; padding: 6px 2px; /* 縮小按鈕內距 */
+    border-radius: 8px; flex: 1 1 0; /* 平均分配等寬 */
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    font-weight: bold; transition: background 0.2s; 
+    min-width: 0; /* 允許內部文字截斷的關鍵 */
+}
+/* 3. 新增按鈕發送時的「禁用/變暗」狀態 */
+.l2d-action-btn:disabled {
+    opacity: 0.4 !important;
+    pointer-events: none;
+    filter: grayscale(100%);
+}
+.sidebar-action-btn span {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; /* 帳號太長變... */
+}
+.sidebar-action-btn svg {
+    margin-right: 0 !important; flex-shrink: 0;
+}
 .sidebar-action-btn:hover { background: var(--input-bg); transform: translateY(-2px); }
 
 .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 150; backdrop-filter: blur(2px); transition: opacity 0.3s; }
@@ -410,151 +434,310 @@ body, html {
 }
 
 /* ==========================================
-   Live2D 模式全新 UI 面板與氣泡
+   Live2D 模式全新 UI 面板與氣泡 (巨大懸浮島版)
 ========================================== */
 #view-live2d {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    align-items: center;
-    background: linear-gradient(135deg, #eef2f3 0%, #8e9eab 100%) !important;
+    display: flex; flex-direction: column; justify-content: space-between; align-items: center;
+    background: url('/static/live2D_background.jpg') center/cover !important;
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    overflow: hidden;
 }
-[data-theme="dark"] #view-live2d {
-    background: linear-gradient(135deg, #141e30 0%, #243b55 100%) !important;
+#view-live2d::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(255, 255, 255, 0.45); 
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); z-index: 0;
+}
+[data-theme="dark"] #view-live2d::before {
+    background: rgba(15, 18, 25, 0.7); 
+}
+#live2d-stage-container, .live2d-dashboard { z-index: 1; }
+
+/* 🌟 WebGL 保命隱藏法 (解決模型跑路問題) */
+.l2d-hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    z-index: -1000 !important;
+    visibility: hidden !important;
 }
 
+/* =======================================================
+   🌟 拆除隱形牆：讓畫布有足夠的空間容納長氣泡
+======================================================= */
 #live2d-stage-container {
-    position: relative;
-    flex: 1;
-    width: 100%;
-    max-width: 600px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    position: relative; flex: 1; width: 100%; 
+    max-width: 1400px; /* 👈 從原本的 600px 修改為 1400px */
+    display: flex; justify-content: center; align-items: center;
 }
 
-/* 漫畫風格漫出對話氣泡 */
 .live2d-bubble {
     position: absolute;
-    top: 22%;
-    right: 8%;
-    background: rgba(255, 255, 255, 0.95);
-    color: #1f1f1f;
-    padding: 14px 18px;
-    border-radius: 20px 20px 0px 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-    max-width: 240px;
-    font-size: 15px;
-    font-weight: 600;
-    line-height: 1.4;
     z-index: 100;
-    border: 2px solid #0b93f6;
     animation: bubblePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;            
+    align-items: center;      
+    pointer-events: none; 
+    min-width: 60px;
+    min-height: 52px !important; 
+    width: max-content; /* 🌟 關鍵 1：換回 max-content，讓氣泡具有擴張的慾望 */
 }
-[data-theme="dark"] .live2d-bubble {
-    background: rgba(30, 31, 32, 0.95);
-    color: #e3e3e3;
-    border-color: #8ab4f8;
-}
-.bubble-arrow {
-    position: absolute;
-    bottom: -2px;
-    right: -10px;
-    width: 0; height: 0;
-    border-left: 12px solid #0b93f6;
-    border-top: 12px solid transparent;
-}
-[data-theme="dark"] .bubble-arrow {
-    border-left-color: #8ab4f8;
+.bubble-text {
+    font-size: 15px; font-weight: 600; line-height: 1.5;
+    word-break: break-word; position: relative; z-index: 2;
+    display: block;
 }
 
+.bubble-arrow { display: none !important; }
+
+/* ======================================================
+   💬 情感設計 1：平靜模式 (完美重現 iOS 氣泡)
+====================================================== */
+.live2d-bubble.mood-calm {
+    background-color: #ffffff;
+    border: 2px solid #d1d1d6;
+    border-radius: 22px; 
+    padding: 14px 20px !important; 
+    filter: drop-shadow(0 6px 16px rgba(0,0,0,0.1));
+}
+.live2d-bubble.mood-calm .bubble-text { color: #222222; }
+
+/* 👇 完美左側三角形外框 (灰色) - 改到左上方 */
+.live2d-bubble.mood-calm::after {
+    content: ''; position: absolute;
+    left: -12px; top: 26px; transform: translateY(-50%); /* 🌟 永遠固定在左上方 */
+    width: 0; height: 0;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-right: 12px solid #d1d1d6;
+    z-index: 1;
+}
+/* 👇 完美左側三角形內心 (白色覆蓋) - 改到左上方 */
+.live2d-bubble.mood-calm::before {
+    content: ''; position: absolute;
+    left: -9px; top: 26px; transform: translateY(-50%); /* 🌟 永遠固定在左上方 */
+    width: 0; height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-right: 10px solid #ffffff;
+    z-index: 2;
+}
+
+/* =======================================================
+   ⚡ 情感設計 2：激動模式 (漫畫風爆發氣泡)
+======================================================= */
+.live2d-bubble.mood-excited {
+    background-color: #ffffff;
+    border: 3px solid #111111; 
+    border-radius: 12px;
+    padding: 16px 22px !important; 
+    filter: drop-shadow(4px 4px 0px rgba(17,17,17,0.9)); 
+}
+.live2d-bubble.mood-excited .bubble-text { 
+    color: #000000; font-size: 17px; font-weight: 800; font-style: italic;
+}
+
+/* 漫畫風巨大尖銳尾巴 (黑底) - 改到左上方 */
+.live2d-bubble.mood-excited::after {
+    content: ''; position: absolute;
+    left: -16px; top: 26px; transform: translateY(-50%); /* 🌟 永遠固定在左上方 */
+    width: 0; height: 0;
+    border-top: 12px solid transparent;
+    border-bottom: 12px solid transparent;
+    border-right: 16px solid #111111;
+    z-index: 1;
+}
+/* 漫畫風尖銳尾巴 (白底覆蓋) - 改到左上方 */
+.live2d-bubble.mood-excited::before {
+    content: ''; position: absolute;
+    left: -11px; top: 26px; transform: translateY(-50%); /* 🌟 永遠固定在左上方 */
+    width: 0; height: 0;
+    border-top: 9px solid transparent;
+    border-bottom: 9px solid transparent;
+    border-right: 12px solid #ffffff;
+    z-index: 2;
+}
 @keyframes bubblePop {
     from { transform: scale(0.8); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
 }
 
-/* 控制面板總成 */
+/* 🌟 巨大懸浮島控制面板 */
 .live2d-dashboard {
-    width: 100%;
+    position: absolute;
+    bottom: 50px; /* 電腦版也稍微往上提一點 */
+    left: 50%;
+    transform: translateX(-50%);
+    /* 👇 放棄 calc，直接用 90% 百分比，保證絕對不會撐破螢幕左右兩側 */
+    width: 90%; 
     max-width: 550px;
-    padding: 16px 20px 35px 20px;
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-radius: 24px 24px 0 0;
-    box-shadow: 0 -10px 30px rgba(0,0,0,0.08);
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    z-index: 110;
-}
-[data-theme="dark"] .live2d-dashboard {
-    background: rgba(19, 19, 20, 0.8);
+    padding: 16px 20px;
+    background: var(--header-bg); 
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-radius: 24px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.25); 
+    display: flex; flex-direction: column; gap: 12px; z-index: 110;
+    box-sizing: border-box; 
 }
 
-.l2d-mode-selector {
-    display: flex;
-    gap: 8px;
-}
+.l2d-mode-selector { display: flex; gap: 8px; }
 .l2d-mode-btn {
-    flex: 1;
-    padding: 8px 12px;
-    border-radius: 14px;
-    border: 1px solid var(--border-color);
-    background: var(--input-bg);
-    color: var(--text-color);
-    font-size: 13px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    flex: 1; padding: 8px 12px; border-radius: 14px; border: 1px solid var(--border-color);
+    background: var(--input-bg); color: var(--text-color); font-size: 13px; font-weight: bold;
+    cursor: pointer; transition: all 0.2s ease;
+    /* 👇 讓內部插入的 SVG 圖示與文字完美置中 */
+    display: flex; align-items: center; justify-content: center; gap: 6px; 
 }
-.l2d-mode-btn.active {
-    background: var(--primary-color);
-    color: #ffffff !important;
-    border-color: var(--primary-color);
-}
+.l2d-mode-btn.active { background: var(--primary-color); color: #ffffff !important; border-color: var(--primary-color); }
+.l2d-mode-btn svg { margin: 0 !important; position: static !important; }
 
-.l2d-input-bar {
-    display: flex;
-    align-items: center;
-    background: var(--input-bg);
-    border-radius: 20px;
-    padding: 6px 12px;
-    gap: 8px;
-    border: 1px solid var(--border-color);
-}
-#l2d-chat-input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    outline: none;
-    color: var(--text-color);
-    font-size: 15px;
-    resize: none;
-    padding: 6px 0;
-}
+.l2d-input-bar { display: flex; align-items: center; background: var(--input-bg); border-radius: 20px; padding: 6px 12px; gap: 8px; border: 1px solid var(--border-color); }
+#l2d-chat-input { flex: 1; background: transparent; border: none; outline: none; color: var(--text-color); font-size: 15px; resize: none; padding: 6px 0; }
 
-.l2d-action-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 16px;
-    transition: all 0.2s ease;
-}
+.l2d-action-btn { width: 36px; height: 36px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; transition: all 0.2s ease; }
+.l2d-action-btn svg { margin: 0 !important; position: static !important; }
 .mic-btn { background: #0b93f6; color: white; }
-.mic-btn.recording {
-    background: #ff3b30 !important;
-    animation: l2dPulse 1.4s infinite;
-}
+.mic-btn.recording { background: #ff3b30 !important; animation: l2dPulse 1.4s infinite; }
 .send-btn { background: var(--text-color); color: var(--bg-color); }
+
+/* 👇 新增這段：當按鈕被加上 disabled 屬性時，會變灰並微透明 */
+.l2d-action-btn:disabled {
+    opacity: 0.4 !important;
+    pointer-events: none;
+    filter: grayscale(100%);
+}
+#l2d-chat-input:read-only {
+    opacity: 0.7; /* 輸入框鎖定時也微透明提示用戶 */
+}
 
 @keyframes l2dPulse {
     0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,59,48,0.7); }
     70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255,59,48,0); }
     100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,59,48,0); }
+}
+
+/* ==========================================
+   💻 頂級 One Dark Pro 程式碼高亮視覺系統
+========================================== */
+.msg-content pre {
+    background-color: #282c34 !important; /* 經典深邃太空灰 */
+    color: #abb2bf !important;            /* 舒適不刺眼主文字 */
+    padding: 14px 18px;
+    border-radius: 12px;
+    overflow-x: auto;
+    font-family: 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
+    margin: 14px 0;
+    font-size: 14px;
+    line-height: 1.6;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* 行內單個小代碼塊 (Inline Code) */
+.msg-content code {
+    background-color: rgba(128, 128, 128, 0.15);
+    color: var(--primary-color);
+    padding: 3px 6px;
+    border-radius: 6px;
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 0.9em;
+    font-weight: 600;
+}
+
+/* 確保 pre 內部的 code 保持透明底色 */
+.msg-content pre code {
+    background-color: transparent !important;
+    padding: 0 !important;
+    color: inherit !important;
+    font-weight: normal;
+}
+
+/* ==========================================
+   🎨 Highlight.js 專屬語法染色 Token (極致細節)
+========================================== */
+.hljs-keyword, .hljs-selector-tag, .hljs-addition {
+    color: #c678dd !important; font-weight: bold; /* 關鍵字 (if, return, def): 浪漫優雅紫 */
+}
+.hljs-function, .hljs-title, .hljs-section {
+    color: #61afef !important; /* 函數名稱、 method: 科技感湛藍 */
+}
+.hljs-string, .hljs-attribute, .hljs-regexp {
+    color: #98c379 !important; /* 字串文字 "hello": 自然活力綠 */
+}
+.hljs-number, .hljs-literal, .hljs-variable {
+    color: #d19a66 !important; /* 數字、常數 (true, false): 溫暖琥珀橙 */
+}
+.hljs-built_in, .hljs-type, .hljs-class {
+    color: #e5c07b !important; /* 內建函數、類別 (print, class): 質感暖金黃 */
+}
+.hljs-comment, .hljs-quote {
+    color: #5c6370 !important; font-style: italic; /* 註解 // comment: 沉穩低調灰 + 斜體 */
+}
+.hljs-params, .hljs-property {
+    color: #ef596f !important; /* 參數與屬性: 珊瑚魅惑紅 */
+}
+.hljs-tag, .hljs-name {
+    color: #e06c75 !important; /* HTML/XML 標籤名 (div, p): 玫瑰淺紅 */
+}
+.hljs-bullet, .hljs-link {
+    color: #61afef !important;
+}
+.hljs-meta {
+    color: #56b6c2 !important; /* 宏、預處理 (import, include): 湖水青綠 */
+}
+
+/* 網頁橫向捲軸優化 */
+.msg-content pre::-webkit-scrollbar {
+    height: 8px !important;
+    display: block !important;
+}
+.msg-content pre::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-radius: 4px !important;
+}
+.msg-content pre::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* ==========================================
+   修復：手機版適配防呆 (懸浮島大幅上移防出界)
+========================================== */
+@media screen and (max-width: 768px) {
+    .live2d-dashboard { 
+        /* 👇 關鍵修復：底部距離大幅拉高到 80px，徹底避開手機瀏覽器的底部導航列 */
+        bottom: 80px; 
+        padding: 14px 16px; 
+        width: 92%; 
+    }
+    
+    .l2d-mode-btn {
+        padding: 8px 4px;
+        font-size: 12px; 
+        letter-spacing: -0.5px;
+    }
+    
+    .live2d-bubble { 
+        font-size: 14px; 
+    }
+    
+    .bubble-arrow {
+        left: -18px; /* 手機版箭頭也配合拉長 */
+        border-right-width: 18px;
+    }
+
+    .live2d-bubble.mood-excited .bubble-text,
+    .live2d-bubble.mood-calm .bubble-text {
+        font-size: 14px;
+    }
+}
+
+
+/* 🌟 修復普通模式發送鍵 (紙飛機) 的光學置中 */
+#chat-send {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+}
+#chat-send svg, #chat-send i {
+    /* 紙飛機圖案視覺重心通常偏右上方，我們往左下方微調 1px 達到完美視覺置中 */
+    transform: translate(-1px, 1px); 
 }

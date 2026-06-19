@@ -14,9 +14,10 @@
     <link rel="stylesheet" href="/static/style.css?v=4">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/5.3.12/pixi.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/index.min.js"></script>
+    <script src="/static/live2dcubismcore.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 </head>
 <body>
     <nav id="sidebar" class="sidebar closed">
@@ -68,7 +69,7 @@
                 
                 <div class="custom-dropdown-container">
                     <button id="model-dropdown-trigger" class="model-dropdown-btn">
-                        <span id="selected-model-name">Gemini 2.5 Flash Lite</span>
+                        <span id="selected-model-name">Gemini 3.1 Flash Lite</span>
                         <span class="chevron">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
                         </span>
@@ -76,7 +77,7 @@
                     <div id="model-dropdown-menu" class="custom-dropdown-menu hidden">
                         <div class="dropdown-item active" data-value="gemini">
                             <div class="item-content">
-                                <span class="item-title">Gemini 2.5 Flash Lite</span>
+                                <span class="item-title">Gemini 3.1 Flash Lite</span>
                                 <span class="item-desc" data-i18n="model_gemini_desc">回覆最快</span>
                             </div>
                             <span class="check-mark">✓</span>
@@ -183,7 +184,7 @@
         </div>
     </div>
 
-    <main id="view-live2d" class="view-container hidden">
+    <main id="view-live2d" class="view-container l2d-hidden">
         <div id="live2d-stage-container">
             <canvas id="live2d-canvas"></canvas>
             
@@ -195,13 +196,13 @@
 
         <div class="live2d-dashboard">
             <div class="l2d-mode-selector">
-                <button id="btn-l2d-mode-auto" class="l2d-mode-btn active">🎙️ 直發模式 (純語音交流)</button>
-                <button id="btn-l2d-mode-verify" class="l2d-mode-btn">📝 校對模式 (檢查後發送)</button>
+                <button id="btn-l2d-mode-auto" class="l2d-mode-btn active" data-i18n="l2d_mode_auto">🎙️ 直發模式 (純語音交流)</button>
+                <button id="btn-l2d-mode-verify" class="l2d-mode-btn" data-i18n="l2d_mode_verify">📝 校對模式 (檢查後發送)</button>
             </div>
             
             <div class="l2d-input-bar">
-                <textarea id="l2d-chat-input" placeholder="等待語音輸入..." rows="1"></textarea>
-                <button id="l2d-mic-btn" class="l2d-action-btn mic-btn">🎤</button>
+                <textarea id="l2d-chat-input" data-i18n-placeholder="l2d_placeholder_auto" placeholder="已開啟直發，請按麥克風語音對話..." rows="1"></textarea>
+                <button id="l2d-mic-btn" class="l2d-action-btn mic-btn"></button>
                 <button id="l2d-send-btn" class="l2d-action-btn send-btn hidden">➤</button>
             </div>
         </div>
@@ -218,11 +219,16 @@
             </label>
             
             <div id="local-node-container" style="display: none; margin-top: 10px; padding: 10px; background: var(--msg-user-bg); border-radius: 8px;">
-                <label><span data-i18n="settings_local_url">🔗 本地節點 URL (Ngrok)：</span>
-                    <input type="text" id="input-local-url" data-i18n-placeholder="placeholder_local_url" placeholder="https://xxxx.ngrok-free.app">
-                </label>
-                <label><span data-i18n="settings_local_model">🤖 本地模型名稱：</span>
-                    <input type="text" id="input-local-model" data-i18n-placeholder="placeholder_local_model" placeholder="例如 gemma4:12b" value="gemma4:12b">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <label style="margin: 0;"><span data-i18n="settings_local_url">🔗 本地節點 URL (API網址)：</span></label>
+                    <button id="btn-local-help" class="icon-btn" style="width: 24px; height: 24px; font-size: 14px; background: var(--border-color); border-radius: 50%; color: var(--text-color);" title="教學">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    </button>
+                </div>
+                <input type="text" id="input-local-url" placeholder="https://xxx.abc.com">
+                
+                <label style="margin-top: 10px; display: block;"><span data-i18n="settings_local_model">🤖 本地模型名稱：</span>
+                    <input type="text" id="input-local-model" placeholder="gemma4:12b" value="gemma4:12b">
                 </label>
             </div>
             
@@ -281,6 +287,43 @@
         </div>
     </div>
 
-    <script src="/static/main.js?v=4"></script>
+    <div id="local-help-modal" class="modal hidden" style="z-index: 2000;">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3 data-i18n="local_help_title">❓ 本地大模型啟動教學</h3>
+                <button class="close-btn" id="close-local-help">×</button>
+            </div>
+            <div style="font-size: 14px; line-height: 1.6; color: var(--text-color);">
+                <p><strong data-i18n="local_help_s1_title">步驟 1：啟動 API 腳本</strong></p>
+                <p><span data-i18n="local_help_s1_desc">在你的PC主機上，打開終端機並執行腳本：</span><br>
+                <code style="background: var(--msg-user-bg); padding: 3px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; color: var(--primary-color);">python local_llm_api.py</code></p>
+                
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 12px 0;">
+                
+                <p><strong data-i18n="local_help_s2_title">步驟 2：設定 Cloudflare Tunnel 穿透</strong></p>
+                <p><span data-i18n="local_help_s2_desc">開啟新終端機，執行以下指令獲取 Domain Name (網址)：</span><br>
+                <code style="background: var(--msg-user-bg); padding: 3px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; color: var(--primary-color);">cloudflared tunnel --url http://127.0.0.1:8001</code><br>
+                <span style="font-size: 12px; color: gray;" data-i18n="local_help_s2_note">(或使用 run 指令綁定 local-llm-api.hiruynk.com)</span></p>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 12px 0;">
+                
+                <p><strong data-i18n="local_help_s3_title">步驟 3：填寫設定參數</strong></p>
+                <ul style="margin-left: 20px; margin-top: 6px;">
+                    <li style="margin-bottom: 4px;">
+                        <strong data-i18n="local_help_s3_url_title">API 網址：</strong>
+                        <span data-i18n="local_help_s3_url_desc">貼上剛才獲取的 HTTPS 網址。</span>
+                        <br><span style="color: gray; font-size: 12px;">(e.g. https://xxx.abc.com)</span>
+                    </li>
+                    <li>
+                        <strong data-i18n="local_help_s3_model_title">模型名稱：</strong>
+                        <span data-i18n="local_help_s3_model_desc">填寫PC上已存在的模型。</span>
+                        <br><span style="color: gray; font-size: 12px;">(e.g. gemma4:12b / qwen2:7b)</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/main.js?v=6"></script>
 </body>
 </html>
