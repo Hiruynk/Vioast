@@ -10,8 +10,7 @@
     <title>Vioast</title>
     <link rel="icon" href="/static/app-logo.png">
     <link rel="apple-touch-icon" href="/static/app-logo.png">
-    <link rel="manifest" href="/static/manifest.json?v=4">
-    <link rel="stylesheet" href="/static/style.css?v=4">
+    <link rel="stylesheet" href="/static/style.css?v=7">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/5.3.12/pixi.min.js"></script>
     <script src="/static/live2dcubismcore.min.js"></script>
@@ -122,7 +121,6 @@
             <button id="btn-mode-live2d" data-i18n-tooltip="tooltip_mode_live2d">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
             </button>
-            <button id="btn-return-sg" class="hidden">返回</button>
         </div>
     </header>
 
@@ -187,6 +185,11 @@
     <main id="view-live2d" class="view-container l2d-hidden">
         <div id="live2d-stage-container">
             <canvas id="live2d-canvas"></canvas>
+
+            <div id="live2d-loading" class="l2d-loading hidden">
+                <div class="l2d-spinner"></div>
+                <span data-i18n="l2d_loading_text">模型載入中，請稍候...</span>
+            </div>
             
             <div id="live2d-speech-bubble" class="live2d-bubble hidden">
                 <div class="bubble-text"></div>
@@ -273,17 +276,6 @@
                 </select>
             </label>
             <button id="btn-start-live2d" class="btn-primary" data-i18n="voice_start_btn">確認並進入</button>
-        </div>
-    </div>
-
-    <div id="beta-modal" class="modal hidden">
-        <div class="modal-content beta-alert">
-            <h3 style="color: #ff3b30;">⚠️ 警告系統 ⚠️</h3>
-            <p>偵測到指令。即將轉移至 Beta 世界線。<br>是否確認執行？</p>
-            <div class="flex-row">
-                <button id="btn-beta-yes" class="btn-danger">是</button>
-                <button id="btn-beta-no" class="btn-secondary">否</button>
-            </div>
         </div>
     </div>
 

@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+httpx
+pydantic
+chromadb
+opencc
+google-genai
+pymongo

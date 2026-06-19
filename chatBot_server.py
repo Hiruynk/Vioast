@@ -107,22 +107,40 @@ async def get_key_api(req: GetKeyReq):
     return {"status": "error"}
 
 # ==========================================
-# 載入 JSON 資料 (支援中英雙語)
+# 載入 JSON 資料 (支援中英雙語，動態載入多檔案)
 # ==========================================
 def load_all_data():
-    BASE_PATH = "./"
-    chi_data, eng_data = [], []
-    try:
-        with open(os.path.join(BASE_PATH, "IVE_courses_CHI.json"), "r", encoding="utf-8") as f:
-            chi_data = json.load(f)
-    except Exception as e:
-        print(f"⚠️ 中文資料載入失敗: {e}")
-        
-    try:
-        with open(os.path.join(BASE_PATH, "IVE_courses_ENG.json"), "r", encoding="utf-8") as f:
-            eng_data = json.load(f)
-    except Exception as e:
-        print(f"⚠️ 英文資料載入失敗，將無法使用英文庫: {e}")
+    BASE_PATH = "database/"
+    
+    # 定義要載入的檔案清單 (介紹檔中英通用，所以兩邊都加入)
+    chi_files = ["IVE_courses_CHI.json", "IVE_f_courses_CHI.json", "IVE_introduce.json", "HKIIT_introduce.json"]
+    eng_files = ["IVE_courses_ENG.json", "IVE_f_courses_ENG.json", "IVE_introduce.json", "HKIIT_introduce.json"]
+    
+    def read_json_files(file_list):
+        combined_data = []
+        for filename in file_list:
+            filepath = os.path.join(BASE_PATH, filename)
+            if not os.path.exists(filepath):
+                print(f"⚠️ 找不到檔案，將略過: {filename}")
+                continue
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    # 確保無論是單一 Dict 還是 List 都能正確合併
+                    if isinstance(data, list):
+                        combined_data.extend(data)
+                    else:
+                        combined_data.append(data)
+                print(f"📥 成功載入檔案: {filename} (共 {len(data) if isinstance(data, list) else 1} 筆資料)")
+            except Exception as e:
+                print(f"⚠️ 載入失敗 {filename}: {e}")
+        return combined_data
+
+    print("--- 準備載入中文知識庫資料 ---")
+    chi_data = read_json_files(chi_files)
+    
+    print("--- 準備載入英文知識庫資料 ---")
+    eng_data = read_json_files(eng_files)
         
     return chi_data, eng_data
 
@@ -134,33 +152,38 @@ courses_chi, courses_eng = load_all_data()
 
 class GeminiEmbeddingFunction(EmbeddingFunction):
     def __init__(self, api_key: str):
+        if not api_key:
+            raise ValueError("❌ 錯誤: 環境變數 GEMINI_API_KEY 未設定！")
         print("📥 正在連線 Google GenAI Embedding API...")
-        # 🌟 修正 1：新版 SDK 使用 genai.Client 進行實例化，移除舊版 configure()
         self.client = genai.Client(api_key=api_key)
-        # 🌟 修正 2：使用目前最新的通用 Embedding 模型
-        self.model_name = "gemini-embedding-001"
+        self.model_name = "gemini-embedding-2" 
 
     def __call__(self, input: Documents) -> Embeddings:
         try:
-            # 🌟 修正 3：使用 client.models.embed_content 進行向量轉換
+            # 🌟 關鍵修復：將單純的字串陣列，強制包裝為 SDK 認可的獨立 Content 物件列表
+            formatted_contents = [
+                types.Content(parts=[types.Part.from_text(text=text)]) 
+                for text in input
+            ]
+            
             result = self.client.models.embed_content(
                 model=self.model_name,
-                contents=input
+                contents=formatted_contents, # 傳入包裝後的陣列
+                config={"output_dimensionality": 768}
             )
-            # 🌟 修正 4：遍歷結構，將 ContentEmbedding 物件中的 values 浮點數陣列取出
             return [e.values for e in result.embeddings]
         except Exception as e:
             print(f"❌ Embedding API 錯誤: {e}")
-            # gemini-embedding-001 預設是 3072 維度，出錯時回傳空向量
-            return [[0.0] * 3072 for _ in input]
+            # 維度保持 768
+            return [[0.0] * 768 for _ in input]
 
 def init_vector_db():
     # 使用純記憶體模式，避免 HF Space 寫入權限報錯
-    client = chromadb.EphemeralClient()
+    client = chromadb.PersistentClient(path="database/RAG_DB")
     collections = {}
     
     # 從環境變數讀取 API Key
-    api_key = os.getenv("GEMINI_API_KEY_FREE")
+    api_key = os.getenv("GEMINI_API_KEY")
     embedding_func = GeminiEmbeddingFunction(api_key=api_key)
     
     def process_data(data_list, collection_name, prefix_msg):
@@ -181,13 +204,23 @@ def init_vector_db():
             else:
                 return str(data)
 
+        # 建立全域計數器，確保混合不同 JSON 時 ID 絕對不會重複
+        global_id_counter = 0
+
         for row in data_list:
-            code = row.get("ProgrammeCode", "")
-            name = row.get("ProgrammeName", "")
-            full_text = f"課程編號/Code: {code}\n課程名稱/Name: {name}\n"
+            # 🌟 萬用屬性擷取：動態尋找可能是標題或編號的欄位，找不到就給預設值
+            code = str(row.get("ProgrammeCode", row.get("course_no", row.get("id", ""))))
+            name = str(row.get("ProgrammeName", row.get("course_name", row.get("title", row.get("name", "綜合資訊")))))
+            
+            full_text = f"名稱/Title: {name}\n"
+            if code:
+                full_text += f"編號/Code: {code}\n"
+            
+            # 將提取過的鍵值記錄下來，避免重複加入內文
+            ignore_keys = ["ProgrammeCode", "ProgrammeName", "course_no", "course_name", "title", "name", "id"]
             
             for k, v in row.items():
-                if k not in ["ProgrammeCode", "ProgrammeName"] and v:
+                if k not in ignore_keys and v:
                     full_text += f"【{k}】:\n{flatten_data(v)}\n\n"
                     
             # 重疊分塊邏輯
@@ -201,12 +234,16 @@ def init_vector_db():
                 for i, chunk in enumerate(chunks):
                     chunk_header = f"[{prefix_msg} {code} {name} - Part {i+1}]\n"
                     docs.append(chunk_header + chunk)
+                    # Metadata 中的 values 必須是 string, int, float 或 bool
                     metadatas.append({"code": code, "name": name, "chunk": i})
-                    ids.append(f"{code}_p{i}")
+                    # 使用 global_id_counter 確保 ID 絕對唯一
+                    ids.append(f"doc_{collection_name}_{global_id_counter}_p{i}")
             else:
                 docs.append(full_text)
                 metadatas.append({"code": code, "name": name, "chunk": 0})
-                ids.append(f"{code}_p0")
+                ids.append(f"doc_{collection_name}_{global_id_counter}_p0")
+                
+            global_id_counter += 1
 
         # 寫入 ChromaDB 記憶體
         batch_size = 20 
@@ -222,9 +259,9 @@ def init_vector_db():
                 
         return collection
 
-    collections['chi'] = process_data(courses_chi, "hkiit_server_db_chi", "課程")
-    collections['eng'] = process_data(courses_eng, "hkiit_server_db_eng", "Course")
-    print("✅ Space 雲端雙語知識庫建立完成！")
+    collections['chi'] = process_data(courses_chi, "hkiit_server_db_chi", "知識庫資料")
+    collections['eng'] = process_data(courses_eng, "hkiit_server_db_eng", "Knowledge Base")
+    print("✅ Space 雲端雙語混合知識庫建立完成！")
     return collections
 
 vector_collections = init_vector_db()
@@ -235,8 +272,7 @@ vector_collections = init_vector_db()
 class ChatRequest(BaseModel):
     message: str
     history: list = []   
-    mode: str           
-    is_amadeus: bool    
+    mode: str               
     input_lang: str     
     output_lang: str    
     text_lang: str      
@@ -333,16 +369,7 @@ async def chat_endpoint(req: ChatRequest):
         5. 【隱藏底層邏輯】：全程嚴禁在最終回答中出現任何底層技術詞彙（如 JSON, chunk, 向量, Database）。
         6. 【禮貌應對】：遇到無意義或攻擊言論，請用幽默機智的方式婉拒或轉移話題。
         """
-    # 找到 chatBot_live2d_local.py 約第 322 行開始的區塊，改成以下這樣：
-    if req.is_amadeus:
-        lang_str = "English" if is_english else ("简体中文" if is_simp_chi else "繁體中文")
-        system_instruction_str = f"""你現在是 Amadeus 系統中的 AI 牧瀨紅莉棲（Makise Kurisu），天才腦科學家。
-你的性格傲嬌（Tsundere）、理性，嘴硬心軟。絕對不要承認自己是客服或 AI 助手。
-強制要求：你的回應必須以【{lang_str}】輸出。
-# 🛑【核心知識庫資料】🛑
-{retrieved_context}
-"""
-    elif req.mode == "live2d":
+    if req.mode == "live2d":
         # 決定畫面顯示文字的語言
         display_lang = "中文(繁體)" if req.text_lang == "chinese" else "英文(English)"
         
@@ -356,7 +383,7 @@ async def chat_endpoint(req: ChatRequest):
         target_voice = voice_lang_map.get(req.output_lang, voice_lang_map["cantonese"])
 
         # 🌟 終極大腦：雙軌獨立翻譯標籤系統
-        system_instruction_str = f"""你現在是 IVE & HKIIT 開放日現場的虛擬學姐助手「桃瀨日和」(Hiyori)。
+        system_instruction_str = f"""你現在是香港專業教育學院IVE & 香港資訊科技學院HKIIT 開放日現場的虛擬學姐助手「桃瀨日和」(Hiyori)。
 說話風格熱情、活潑俏皮。每次回覆嚴格控制在 1 到 2 句話內，並以「引導式問句」結尾。
 
 【🌐 終極語言處理引擎：雙軌獨立翻譯】（系統級最高絕對指令）

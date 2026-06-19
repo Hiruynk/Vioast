@@ -7,17 +7,19 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 import uvicorn
-import urllib.parse
 
 # AI 相關套件
 import chromadb
-import ollama
 from chromadb.api.types import Documents, EmbeddingFunction, Embeddings
 from opencc import OpenCC
 from google import genai
 from google.genai import types 
 
 from pymongo import MongoClient
+
+# 🌟 引入 ChromaDB 內建的 Embedding 工具包
+from chromadb.utils import embedding_functions
+
 
 # ==========================================
 # 1. 基礎設定與模型初始化
@@ -29,7 +31,7 @@ app = FastAPI()
 # ==========================================
 # 🌟 雲端資料庫驗證初始化 (MongoDB Atlas)
 # ==========================================
-MONGO_URI = os.environ.get("MONGO_URI", "mongodb+srv://hiruynk:Ynk39.,.@vioast.j3m5blp.mongodb.net/")
+MONGO_URI = os.environ.get("MONGO_URI")
 users_collection = None
 
 try:
@@ -108,57 +110,76 @@ async def get_key_api(req: GetKeyReq):
     return {"status": "error"}
 
 # ==========================================
-# 載入 JSON 資料 (支援中英雙語)
+# 1. 載入 JSON 資料 (支援中英雙語，動態載入多檔案)
 # ==========================================
 def load_all_data():
-    BASE_PATH = "./"
-    chi_data, eng_data = [], []
-    try:
-        with open(os.path.join(BASE_PATH, "IVE_courses_CHI.json"), "r", encoding="utf-8") as f:
-            chi_data = json.load(f)
-    except Exception as e:
-        print(f"⚠️ 中文資料載入失敗: {e}")
-        
-    try:
-        with open(os.path.join(BASE_PATH, "IVE_courses_ENG.json"), "r", encoding="utf-8") as f:
-            eng_data = json.load(f)
-    except Exception as e:
-        print(f"⚠️ 英文資料載入失敗，將無法使用英文庫: {e}")
+    BASE_PATH = "database/"
+    
+    # 定義要載入的檔案清單 (介紹檔中英通用，所以兩邊都加入)
+    chi_files = ["IVE_courses_CHI.json", "IVE_f_courses_CHI.json", "IVE_introduce.json", "HKIIT_introduce.json"]
+    eng_files = ["IVE_courses_ENG.json", "IVE_f_courses_ENG.json", "IVE_introduce.json", "HKIIT_introduce.json"]
+    
+    def read_json_files(file_list):
+        combined_data = []
+        for filename in file_list:
+            filepath = os.path.join(BASE_PATH, filename)
+            if not os.path.exists(filepath):
+                print(f"⚠️ 找不到檔案，將略過: {filename}")
+                continue
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    # 確保無論是單一 Dict 還是 List 都能正確合併
+                    if isinstance(data, list):
+                        combined_data.extend(data)
+                    else:
+                        combined_data.append(data)
+                print(f"📥 成功載入檔案: {filename} (共 {len(data) if isinstance(data, list) else 1} 筆資料)")
+            except Exception as e:
+                print(f"⚠️ 載入失敗 {filename}: {e}")
+        return combined_data
+
+    print("--- 準備載入中文知識庫資料 ---")
+    chi_data = read_json_files(chi_files)
+    
+    print("--- 準備載入英文知識庫資料 ---")
+    eng_data = read_json_files(eng_files)
         
     return chi_data, eng_data
 
 courses_chi, courses_eng = load_all_data()
 
 # ==========================================
-# 定義 ChromaDB 與 Ollama Embedding
+# 2. 定義 ChromaDB 與 本地 Ollama Embedding (持久化儲存)
 # ==========================================
-class OllamaEmbeddingFunction(EmbeddingFunction):
-    def __call__(self, input: Documents) -> Embeddings:
-        embeddings = []
-        for doc in input:
-            try:
-                res = ollama.embeddings(model="bge-m3", prompt=doc, options={"num_ctx": 4096})
-                embeddings.append(res["embedding"])
-            except Exception as e:
-                print(f"Embedding error: {e}")
-                embeddings.append([0.0] * 1024) 
-        return embeddings
 
 def init_vector_db():
-    client = chromadb.PersistentClient(path="./chroma_db_local")
+    # 🌟 關鍵 1：設定 PersistentClient，將向量永久儲存在本機硬碟中
+    client = chromadb.PersistentClient(path="database/RAG_DB")
     collections = {}
+    
+    # 🌟 關鍵 2：直接使用 ChromaDB 內建的 Ollama 整合套件
+    print("📥 正在連結本地 Ollama (bge-m3)...")
+    ollama_ef = embedding_functions.OllamaEmbeddingFunction(
+        url="http://localhost:11434/api/embeddings", 
+        model_name="bge-m3"
+    )
     
     def process_data(data_list, collection_name, prefix_msg):
         if not data_list: return None
+        
+        # 取得或建立 Collection，並綁定 Ollama Embedding
         collection = client.get_or_create_collection(
             name=collection_name,
-            embedding_function=OllamaEmbeddingFunction()
+            embedding_function=ollama_ef
         )
+        
+        # 🌟 關鍵 3：智能緩存機制。如果硬碟裡已經有資料，就直接跳過漫長的計算過程！
         if collection.count() > 0:
-            print(f"✅ 已載入本地知識庫: {collection_name}")
+            print(f"📦 知識庫 [{collection_name}] 已存在 (共 {collection.count()} 筆向量)，直接從 ./my_vioast_db 載入！")
             return collection
             
-        print(f"📦 正在建立本地知識庫 {collection_name}... 這可能需要幾分鐘")
+        print(f"📦 正在透過 Ollama 計算並建立知識庫 [{collection_name}] 的向量 (首次啟動需時較長)...")
         docs, metadatas, ids = [], [], []
         
         def flatten_data(data):
@@ -169,39 +190,61 @@ def init_vector_db():
             else:
                 return str(data)
 
+        # 建立全域計數器，確保混合不同 JSON 時 ID 絕對唯一
+        global_id_counter = 0
+
         for row in data_list:
-            code = row.get("ProgrammeCode", "")
-            name = row.get("ProgrammeName", "")
-            full_text = f"課程編號/Code: {code}\n課程名稱/Name: {name}\n"
+            # 萬用屬性擷取
+            code = str(row.get("ProgrammeCode", row.get("course_no", row.get("id", ""))))
+            name = str(row.get("ProgrammeName", row.get("course_name", row.get("title", row.get("name", "綜合資訊")))))
+            
+            full_text = f"名稱/Title: {name}\n"
+            if code:
+                full_text += f"編號/Code: {code}\n"
+            
+            ignore_keys = ["ProgrammeCode", "ProgrammeName", "course_no", "course_name", "title", "name", "id"]
+            
             for k, v in row.items():
-                if k not in ["ProgrammeCode", "ProgrammeName"] and v:
+                if k not in ignore_keys and v:
                     full_text += f"【{k}】:\n{flatten_data(v)}\n\n"
                     
-            chunk_size = 1200 
+            # 文本重疊分塊邏輯
+            chunk_size = 800  
+            overlap = 150     
+            
             if len(full_text) > chunk_size:
-                chunks = [full_text[i:i+chunk_size] for i in range(0, len(full_text), chunk_size)]
+                step = chunk_size - overlap
+                chunks = [full_text[i : i + chunk_size] for i in range(0, len(full_text), step)]
+                
                 for i, chunk in enumerate(chunks):
                     chunk_header = f"[{prefix_msg} {code} {name} - Part {i+1}]\n"
                     docs.append(chunk_header + chunk)
-                    metadatas.append({"code": code, "chunk": i})
-                    ids.append(f"{code}_p{i}")
+                    metadatas.append({"code": code, "name": name, "chunk": i})
+                    ids.append(f"doc_{collection_name}_{global_id_counter}_p{i}")
             else:
                 docs.append(full_text)
-                metadatas.append({"code": code, "chunk": 0})
-                ids.append(f"{code}_p0")
+                metadatas.append({"code": code, "name": name, "chunk": 0})
+                ids.append(f"doc_{collection_name}_{global_id_counter}_p0")
+                
+            global_id_counter += 1
 
-        batch_size = 50 
+        # 批次寫入 ChromaDB
+        batch_size = 20 
         for i in range(0, len(docs), batch_size):
-            collection.add(
-                documents=docs[i:i+batch_size], 
-                metadatas=metadatas[i:i+batch_size], 
-                ids=ids[i:i+batch_size]
-            )
+            try:
+                collection.add(
+                    documents=docs[i:i+batch_size], 
+                    metadatas=metadatas[i:i+batch_size], 
+                    ids=ids[i:i+batch_size]
+                )
+            except Exception as e:
+                print(f"⚠️ 寫入 Batch 失敗: {e}")
+                
         return collection
 
-    collections['chi'] = process_data(courses_chi, "hkiit_local_db_chi", "課程")
-    collections['eng'] = process_data(courses_eng, "hkiit_local_db_eng", "Course")
-    print("✅ 知識庫建立完成！")
+    collections['chi'] = process_data(courses_chi, "hkiit_server_db_chi", "知識庫資料")
+    collections['eng'] = process_data(courses_eng, "hkiit_server_db_eng", "Knowledge Base")
+    print("✅ Vioast 本地端雙語混合知識庫載入完成！")
     return collections
 
 vector_collections = init_vector_db()
@@ -212,8 +255,7 @@ vector_collections = init_vector_db()
 class ChatRequest(BaseModel):
     message: str
     history: list = []   
-    mode: str           
-    is_amadeus: bool    
+    mode: str             
     input_lang: str     
     output_lang: str    
     text_lang: str      
@@ -310,16 +352,8 @@ async def chat_endpoint(req: ChatRequest):
         5. 【隱藏底層邏輯】：全程嚴禁在最終回答中出現任何底層技術詞彙（如 JSON, chunk, 向量, Database）。
         6. 【禮貌應對】：遇到無意義或攻擊言論，請用幽默機智的方式婉拒或轉移話題。
         """
-    # 找到 chatBot_live2d_local.py 約第 322 行開始的區塊，改成以下這樣：
-    if req.is_amadeus:
-        lang_str = "English" if is_english else ("简体中文" if is_simp_chi else "繁體中文")
-        system_instruction_str = f"""你現在是 Amadeus 系統中的 AI 牧瀨紅莉棲（Makise Kurisu），天才腦科學家。
-你的性格傲嬌（Tsundere）、理性，嘴硬心軟。絕對不要承認自己是客服或 AI 助手。
-強制要求：你的回應必須以【{lang_str}】輸出。
-# 🛑【核心知識庫資料】🛑
-{retrieved_context}
-"""
-    elif req.mode == "live2d":
+    
+    if req.mode == "live2d":
         # 決定畫面顯示文字的語言
         display_lang = "中文(繁體)" if req.text_lang == "chinese" else "英文(English)"
         
@@ -333,7 +367,7 @@ async def chat_endpoint(req: ChatRequest):
         target_voice = voice_lang_map.get(req.output_lang, voice_lang_map["cantonese"])
 
         # 🌟 終極大腦：雙軌獨立翻譯標籤系統
-        system_instruction_str = f"""你現在是 IVE & HKIIT 開放日現場的虛擬學姐助手「桃瀨日和」(Hiyori)。
+        system_instruction_str = f"""你現在是香港專業教育學院IVE & 香港資訊科技學院HKIIT 開放日現場的虛擬學姐助手「桃瀨日和」(Hiyori)。
 說話風格熱情、活潑俏皮。每次回覆嚴格控制在 1 到 2 句話內，並以「引導式問句」結尾。
 
 【🌐 終極語言處理引擎：雙軌獨立翻譯】（系統級最高絕對指令）
@@ -477,4 +511,4 @@ async def chat_endpoint(req: ChatRequest):
     return StreamingResponse(generate(), media_type="text/event-stream")
 
 if __name__ == "__main__":
-    uvicorn.run("chatBot_live2d_local:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("chatBot_local:app", host="0.0.0.0", port=8000)
