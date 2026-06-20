@@ -1,0 +1,1 @@
+可以雙擊win_run_chatBot.bat或mac_run_chatBot.command快速打開chatBot網頁
