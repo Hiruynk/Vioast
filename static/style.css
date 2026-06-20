@@ -305,44 +305,59 @@ body, html {
 .upload-icon { font-size: 18px; }
 
 /* ==========================================
-   7. 懸浮提示框 (Tooltips 邊界極致防禦)
+   7. 懸浮提示框 (Tooltips 尺寸判斷雙平台邏輯)
 ========================================== */
-[data-tooltip] { position: relative; }
-[data-tooltip]::after {
+/* 基礎樣式 (隱藏狀態) */
+[data-tooltip], [data-i18n-tooltip] { position: relative; -webkit-touch-callout: none; user-select: none; }
+[data-tooltip]::after, [data-i18n-tooltip]::after {
     content: attr(data-tooltip); position: absolute; bottom: -36px; left: 50%; transform: translateX(-50%) translateY(-5px);
     background-color: var(--text-color); color: var(--bg-color); padding: 6px 12px; border-radius: 6px;
-    font-size: 13px; font-weight: 500; white-space: nowrap; opacity: 0; pointer-events: none;
-    transition: opacity 0.2s, transform 0.2s; z-index: 2000; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    font-size: 13px; font-weight: 500; white-space: nowrap; pointer-events: none;
+    opacity: 0; visibility: hidden; 
+    transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+    z-index: 2000; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
-[data-tooltip]:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* 左側邊緣的按鈕提示框靠左對齊，防切斷 */
-#btn-toggle-sidebar[data-tooltip]::after,
-#btn-upload-toggle[data-tooltip]::after {
+/* 左側邊緣定位 */
+#btn-toggle-sidebar[data-tooltip]::after, #btn-upload-toggle[data-tooltip]::after {
     left: 0; transform: translateX(0) translateY(-5px);
 }
-#btn-toggle-sidebar[data-tooltip]:hover::after,
-#btn-upload-toggle[data-tooltip]:hover::after {
-    transform: translateX(0) translateY(0);
+/* 右側邊緣定位 */
+#chat-send[data-tooltip]::after, .sidebar-close-btn[data-tooltip]::after, #btn-mode-live2d[data-tooltip]::after, #btn-return-sg[data-tooltip]::after, #btn-l2d-history[data-tooltip]::after {
+    left: auto; right: 0; transform: translateX(0) translateY(-5px);
 }
 
-/* 修改後：加入 #btn-l2d-history 進行右邊界磁吸防護 */
-#chat-send[data-tooltip]::after,
-.sidebar-close-btn[data-tooltip]::after,
-#btn-mode-live2d[data-tooltip]::after,
-#btn-return-sg[data-tooltip]::after,
-#btn-l2d-history[data-tooltip]::after { /* 🌟 新增此行 */
-    left: auto; 
-    right: 0; 
-    transform: translateX(0) translateY(-5px);
+/* 💻 電腦版專屬邏輯 (大於 768px)：滑鼠懸停 (Hover) 觸發 */
+@media screen and (min-width: 769px) {
+    [data-tooltip]:hover::after, [data-i18n-tooltip]:hover::after { 
+        opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); 
+    }
+    #btn-toggle-sidebar[data-tooltip]:hover::after, #btn-upload-toggle[data-tooltip]:hover::after {
+        transform: translateX(0) translateY(0);
+    }
+    #chat-send[data-tooltip]:hover::after, .sidebar-close-btn[data-tooltip]:hover::after, #btn-mode-live2d[data-tooltip]:hover::after, #btn-return-sg[data-tooltip]:hover::after, #btn-l2d-history[data-tooltip]:hover::after {
+        transform: translateX(0) translateY(0);
+    }
 }
 
-#chat-send[data-tooltip]:hover::after,
-.sidebar-close-btn[data-tooltip]:hover::after,
-#btn-mode-live2d[data-tooltip]:hover::after,
-#btn-return-sg[data-tooltip]:hover::after,
-#btn-l2d-history[data-tooltip]:hover::after { /* 🌟 新增此行 */
-    transform: translateX(0) translateY(0);
+/* 📱 手機版專屬邏輯 (小於等於 768px)：徹底殺死 CSS Hover，全權由 JS 控制 */
+@media screen and (max-width: 768px) {
+    /* 1. 🌟 終極修復：加入 :not 護盾！如果已經被 JS 觸發顯示，就不准隱藏它！ */
+    [data-tooltip]:not(.mobile-show-tooltip):hover::after, [data-tooltip]:not(.mobile-show-tooltip):active::after,
+    [data-i18n-tooltip]:not(.mobile-show-tooltip):hover::after, [data-i18n-tooltip]:not(.mobile-show-tooltip):active::after { 
+        opacity: 0 !important; visibility: hidden !important; 
+    }
+
+    /* 2. 由 JavaScript 強制掛載 class 來顯示 (提高權重) */
+    [data-tooltip].mobile-show-tooltip::after, [data-i18n-tooltip].mobile-show-tooltip::after {
+        opacity: 1 !important; visibility: visible !important; transform: translateX(-50%) translateY(0) !important; 
+    }
+    #btn-toggle-sidebar.mobile-show-tooltip::after, #btn-upload-toggle.mobile-show-tooltip::after {
+        transform: translateX(0) translateY(0) !important;
+    }
+    #chat-send.mobile-show-tooltip::after, .sidebar-close-btn.mobile-show-tooltip::after, #btn-mode-live2d.mobile-show-tooltip::after, #btn-return-sg.mobile-show-tooltip::after, #btn-l2d-history.mobile-show-tooltip::after {
+        transform: translateX(0) translateY(0) !important;
+    }
 }
 
 /* ==========================================

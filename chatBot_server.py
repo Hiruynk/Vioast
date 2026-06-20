@@ -30,6 +30,7 @@ app = FastAPI()
 # ==========================================
 MONGO_URI = os.environ.get("MONGO_URI")
 users_collection = None
+db = None  # 🌟 新增這行，確保全域可用
 
 try:
     # 加入 Timeout 避免無止盡等待導致伺服器卡死
@@ -178,22 +179,50 @@ class GeminiEmbeddingFunction(EmbeddingFunction):
             return [[0.0] * 768 for _ in input]
 
 def init_vector_db():
-    # 使用純記憶體模式，避免 HF Space 寫入權限報錯
-    client = chromadb.PersistentClient(path="database/RAG_DB")
+    # 🌟 1. 改為「純記憶體模式」，徹底避開 HF Space 寫入權限報錯，資料由 MongoDB 提供
+    client = chromadb.EphemeralClient()
     collections = {}
     
-    # 從環境變數讀取 API Key
     api_key = os.getenv("GEMINI_API_KEY")
     embedding_func = GeminiEmbeddingFunction(api_key=api_key)
     
-    def process_data(data_list, collection_name, prefix_msg):
+    # 取得 MongoDB 的 RAG 專用集合 (Collections)
+    global db
+    mongo_rag_chi = db["rag_chi"] if db is not None else None
+    mongo_rag_eng = db["rag_eng"] if db is not None else None
+    
+    def process_data(data_list, collection_name, prefix_msg, mongo_col):
         if not data_list: return None
         collection = client.get_or_create_collection(
             name=collection_name,
             embedding_function=embedding_func
         )
         
-        print(f"📦 正在建立 Space 記憶體知識庫 {collection_name}...")
+        # 🌟 2. 啟動加速：如果 MongoDB 已經有備份過資料，直接抓回記憶體，省下所有 API 呼叫！
+        if mongo_col is not None:
+            mongo_count = mongo_col.count_documents({})
+            if mongo_count > 0:
+                print(f"📦 從 MongoDB 載入 {collection_name} 的向量資料 ({mongo_count} 筆)...")
+                all_docs = list(mongo_col.find({}))
+                
+                docs = [d["document"] for d in all_docs]
+                metadatas = [d["metadata"] for d in all_docs]
+                ids = [d["id"] for d in all_docs]
+                embeddings = [d["embedding"] for d in all_docs]
+                
+                # 寫入 ChromaDB 記憶體
+                batch_size = 50
+                for i in range(0, len(docs), batch_size):
+                    collection.add(
+                        documents=docs[i:i+batch_size],
+                        embeddings=embeddings[i:i+batch_size], # 直接給算好的向量，跳過 Gemini API！
+                        metadatas=metadatas[i:i+batch_size],
+                        ids=ids[i:i+batch_size]
+                    )
+                return collection
+
+        # 🌟 3. 若 MongoDB 是空的 (第一次啟動)，才呼叫 Gemini 運算
+        print(f"📦 MongoDB 無資料，正在透過 Gemini API 計算並建立 {collection_name}...")
         docs, metadatas, ids = [], [], []
         
         def flatten_data(data):
@@ -204,11 +233,9 @@ def init_vector_db():
             else:
                 return str(data)
 
-        # 建立全域計數器，確保混合不同 JSON 時 ID 絕對不會重複
         global_id_counter = 0
 
         for row in data_list:
-            # 🌟 萬用屬性擷取：動態尋找可能是標題或編號的欄位，找不到就給預設值
             code = str(row.get("ProgrammeCode", row.get("course_no", row.get("id", ""))))
             name = str(row.get("ProgrammeName", row.get("course_name", row.get("title", row.get("name", "綜合資訊")))))
             
@@ -216,14 +243,12 @@ def init_vector_db():
             if code:
                 full_text += f"編號/Code: {code}\n"
             
-            # 將提取過的鍵值記錄下來，避免重複加入內文
             ignore_keys = ["ProgrammeCode", "ProgrammeName", "course_no", "course_name", "title", "name", "id"]
             
             for k, v in row.items():
                 if k not in ignore_keys and v:
                     full_text += f"【{k}】:\n{flatten_data(v)}\n\n"
                     
-            # 重疊分塊邏輯
             chunk_size = 800  
             overlap = 150     
             
@@ -234,9 +259,7 @@ def init_vector_db():
                 for i, chunk in enumerate(chunks):
                     chunk_header = f"[{prefix_msg} {code} {name} - Part {i+1}]\n"
                     docs.append(chunk_header + chunk)
-                    # Metadata 中的 values 必須是 string, int, float 或 bool
                     metadatas.append({"code": code, "name": name, "chunk": i})
-                    # 使用 global_id_counter 確保 ID 絕對唯一
                     ids.append(f"doc_{collection_name}_{global_id_counter}_p{i}")
             else:
                 docs.append(full_text)
@@ -245,7 +268,6 @@ def init_vector_db():
                 
             global_id_counter += 1
 
-        # 寫入 ChromaDB 記憶體
         batch_size = 20 
         for i in range(0, len(docs), batch_size):
             try:
@@ -257,11 +279,37 @@ def init_vector_db():
             except Exception as e:
                 print(f"⚠️ 寫入 Batch 失敗: {e}")
                 
+        # 🌟 4. 計算完成後，把資料備份到 MongoDB，下次伺服器重啟就不用再算了！
+        if mongo_col is not None:
+            print(f"☁️ 正在將 {collection_name} 的向量備份到 MongoDB...")
+            # 把剛算好的 embedding 從記憶體中抓出來
+            all_data = collection.get(include=["embeddings", "documents", "metadatas"])
+            mongo_docs = []
+            for i in range(len(all_data["ids"])):
+                
+                # 👇 🌟 核心修復：將 ChromaDB 吐出來的 numpy.ndarray 轉換為原生 list
+                raw_embedding = all_data["embeddings"][i]
+                if hasattr(raw_embedding, "tolist"):
+                    safe_embedding = raw_embedding.tolist() # 將 numpy 陣列與內部的 numpy.float64 徹底轉為原生型態
+                else:
+                    safe_embedding = list(raw_embedding)    # 備用防呆機制
+                
+                mongo_docs.append({
+                    "id": all_data["ids"][i],
+                    "document": all_data["documents"][i],
+                    "metadata": all_data["metadatas"][i],
+                    "embedding": safe_embedding # 👈 使用轉換過的安全格式存入資料庫
+                })
+                
+            if mongo_docs:
+                mongo_col.insert_many(mongo_docs)
+                print(f"✅ 成功備份 {len(mongo_docs)} 筆向量到 MongoDB！")
+
         return collection
 
-    collections['chi'] = process_data(courses_chi, "hkiit_server_db_chi", "知識庫資料")
-    collections['eng'] = process_data(courses_eng, "hkiit_server_db_eng", "Knowledge Base")
-    print("✅ Space 雲端雙語混合知識庫建立完成！")
+    collections['chi'] = process_data(courses_chi, "hkiit_server_db_chi", "知識庫資料", mongo_rag_chi)
+    collections['eng'] = process_data(courses_eng, "hkiit_server_db_eng", "Knowledge Base", mongo_rag_eng)
+    print("✅ 伺服器雙語混合知識庫建立完成！")
     return collections
 
 vector_collections = init_vector_db()

@@ -21,6 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let sentenceQueue = [];
     let currentAudio = null;
 
+    let ttsInterruptToken = 0; // 🌟 新增：語音防重疊中斷權杖
+
     let audioContext = null;
     let audioAnalyser = null;
 
@@ -951,17 +953,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // 將全量回覆送入 TTS 與氣泡分離器
-            speakFrontendTTS(fullAiResponse);
-
-            live2dMessages.push({ role: 'user', content: text });
-            live2dMessages.push({ role: 'ai', content: fullAiResponse });
-
-            // 👇 🌟 2. 儲存 AI 回覆
-            live2dFullHistory.push({ role: 'ai', content: fullAiResponse });
-            saveL2dHistory();
-            renderL2dHistory();
-
             content.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
             currentMessages.push({role: 'ai', content: aiTextContent});
             saveSession();
@@ -978,12 +969,100 @@ document.addEventListener('DOMContentLoaded', () => {
             
 
         } catch (err) {
-            content.innerText = dict.err_network;
+            console.error("Chat Mode Error:", err);
+            // 🌟 溫和的錯誤處理：如果已經有生成文字，就把錯誤訊息「加在下面」，而不是清空畫面！
+            if (typeof aiTextContent !== 'undefined' && aiTextContent.length > 0) {
+                content.innerHTML += `<br><br><span style="color:#ff3b30; font-weight:bold;">⚠️ 系統提示：${dict.err_network}</span>`;
+            } else {
+                content.innerText = dict.err_network;
+            }
         } finally {
             // 🌟 極度重要：不管成功還是失敗 (Error)，最後一定要解除防連點鎖！
             isProcessingRequest = false;
         }
     }
+
+    // =======================================================
+    // 🌟 手機版終極防呆：獨立計時器、支援電腦模擬、無震動
+    // =======================================================
+    let isTouchDevice = false; // 全域標記是否使用觸控
+
+    document.querySelectorAll('[data-tooltip], [data-i18n-tooltip]').forEach(btn => {
+        // 🌟 把計時器跟狀態放在每個 btn 內部，徹底解決互相干擾的靈異現象
+        let pressTimer = null;
+        let isLongPress = false;
+
+        const startPress = (e) => {
+            if (window.innerWidth > 768) return; 
+            
+            if (e.type === 'touchstart') isTouchDevice = true;
+            if (e.type === 'mousedown' && isTouchDevice) return;
+
+            isLongPress = false;
+            clearTimeout(pressTimer);
+            
+            // 點擊新按鈕時，強制關閉畫面上其他可能還亮著的提示框
+            document.querySelectorAll('.mobile-show-tooltip').forEach(b => {
+                if (b !== btn) b.classList.remove('mobile-show-tooltip');
+            });
+            
+            pressTimer = setTimeout(() => {
+                isLongPress = true;
+                btn.classList.add('mobile-show-tooltip'); 
+                // 🚨 已根據要求移除震動功能 (navigator.vibrate)
+            }, 400); // 400 毫秒判定為長按
+        };
+
+        const cancelPress = () => {
+            if (window.innerWidth > 768) return;
+            clearTimeout(pressTimer);
+            if (!isLongPress) {
+                btn.classList.remove('mobile-show-tooltip');
+            }
+        };
+
+        const endPress = (e) => {
+            if (window.innerWidth > 768) return;
+            clearTimeout(pressTimer);
+            
+            if (isLongPress) {
+                if (e.cancelable) e.preventDefault(); // 殺死手機 click
+                
+                // 讓介紹框多停留 1.5 秒方便閱讀
+                setTimeout(() => {
+                    btn.classList.remove('mobile-show-tooltip');
+                }, 1500);
+            } else {
+                // 如果是快點，立刻移除，絕不閃現
+                btn.classList.remove('mobile-show-tooltip');
+            }
+        };
+
+        // 👆 給真手機用的觸控事件 (增加 touchcancel 防護)
+        btn.addEventListener('touchstart', startPress, { passive: true });
+        btn.addEventListener('touchmove', cancelPress, { passive: true });
+        btn.addEventListener('touchend', endPress);
+        btn.addEventListener('touchcancel', cancelPress);
+
+        // 🖱️ 給你在電腦縮小視窗測試用的滑鼠事件！
+        btn.addEventListener('mousedown', startPress);
+        btn.addEventListener('mouseleave', cancelPress);
+        btn.addEventListener('mouseup', endPress);
+
+        // 攔截系統長按選單
+        btn.addEventListener('contextmenu', (e) => {
+            if (window.innerWidth <= 768) e.preventDefault();
+        });
+
+        // 終極保險：在捕獲階段把 click 掐死
+        btn.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768 && (isLongPress || btn.classList.contains('mobile-show-tooltip'))) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }
+        }, true); 
+    });
 
     // ==========================================
     // 7. 其他事件綁定
@@ -1232,6 +1311,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function speakFrontendTTS(fullText) {
+        ttsInterruptToken++; // 🌟 每次呼叫就換一個新 Token
+        const myToken = ttsInterruptToken; // 🌟 記住當下這句話的專屬 Toke
+
         let textToSpeak = fullText;
         let textToDisplay = fullText;
 
@@ -1271,7 +1353,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const textSentences = textToDisplay.match(splitRegex) || [textToDisplay];
         
         if (currentAudio) {
+            // 🌟 徹底殺死舊語音，拔除所有事件監聽與 src，釋放記憶體
+            currentAudio.onplaying = null;
+            currentAudio.onerror = null;
+            currentAudio.onended = null;
             currentAudio.pause();
+            currentAudio.removeAttribute('src'); 
+            currentAudio.load(); 
             currentAudio = null;
         }
         
@@ -1289,10 +1377,14 @@ document.addEventListener('DOMContentLoaded', () => {
         let accumulatedText = ""; 
 
         function playNextQueue() {
+            // 🛑 絕對防護 1：如果這時候 Token 變了（代表被新語音覆蓋），立刻終止！
+            if (myToken !== ttsInterruptToken) return;
+
             if (sentenceQueue.length === 0) {
                 ttsSpeaking = false;
                 setTimeout(() => { 
-                    if(!ttsSpeaking) {
+                    // 🛑 絕對防護 2：收合氣泡前也要檢查是否被中斷
+                    if(!ttsSpeaking && myToken === ttsInterruptToken) {
                         document.getElementById('live2d-speech-bubble').classList.add('hidden'); 
                     }
                 }, 3000);
@@ -1315,16 +1407,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isNaN(duration) || !isFinite(duration) || duration === 0) {
                     duration = textToType.length * 0.2; 
                 }
-                let typingTime = (duration * 1000) - 2000;
-                if (typingTime < textToType.length * 30) {
-                    typingTime = textToType.length * 60; 
+                
+                // 🌟 修正 1：移除原本 -2000 的舊補償！改為扣除 200 毫秒，讓文字剛好在語音結束前打完
+                let typingTime = (duration * 1000) - 200;
+                if (typingTime < textToType.length * 20) {
+                    typingTime = (duration * 1000); 
                 }
-                const speed = Math.max(30, typingTime / textToType.length);
+                // 調快最低打字速度，防止過慢
+                const speed = Math.max(20, typingTime / textToType.length);
 
                 let charIndex = 0;
                 if (window.live2dTypeInterval) clearInterval(window.live2dTypeInterval);
                 if (window.live2dTypeDelay) clearTimeout(window.live2dTypeDelay);
 
+                // 🌟 修正 2：將延遲從 2000 改為 0！(聲音一出，文字秒出)
                 window.live2dTypeDelay = setTimeout(() => {
                     bubble.className = `live2d-bubble mood-${live2dMood}`;
                     window.live2dTypeInterval = setInterval(() => {
@@ -1334,10 +1430,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             clearInterval(window.live2dTypeInterval);
                         }
                     }, speed);
-                }, 2000); 
+                }, 0); 
             }
 
             function handleAudioEnded() {
+                // 🛑 絕對防護 3：如果語音結束時 Token 已變，不准播下一句舊台詞！
+                if (myToken !== ttsInterruptToken) return;
+
                 if (window.live2dTypeDelay) clearTimeout(window.live2dTypeDelay);
                 if (window.live2dTypeInterval) clearInterval(window.live2dTypeInterval);
                 accumulatedText = baseText + textToType; 
@@ -1375,6 +1474,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 🌟 核心修復 1：從 onplay 改為 onplaying！
             // 確保 TTS 伺服器推理完畢，且瀏覽器真正開始發聲的那一刻，才解鎖口型與打字機！
             currentAudio.onplaying = () => { 
+                if (myToken !== ttsInterruptToken) { currentAudio.pause(); return; } 
                 triggerTypewriter(currentAudio);
                 
                 if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -1396,19 +1496,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 🌟 嚴格鎖定的錯誤處理鏈
             currentAudio.onerror = () => {
+                // 🛑 絕對防護 5：錯誤重試時也要檢查
+                if (myToken !== ttsInterruptToken) return; 
+                
                 if (isFallbackTriggered) return;
                 isFallbackTriggered = true;
-
                 console.warn("⚡ 主伺服器失效，切換安全播放模式...");
                 const safeAudio = new Audio(primaryUrl);
                 currentAudio = safeAudio; 
                 let safeFailed = false;
 
-                // 🌟 核心修復 2：安全模式也改為 onplaying
-                safeAudio.onplaying = () => triggerTypewriter(safeAudio);
+                safeAudio.onplaying = () => {
+                    if (myToken !== ttsInterruptToken) { safeAudio.pause(); return; }
+                    triggerTypewriter(safeAudio);
+                };
                 safeAudio.onended = handleAudioEnded;
                 
                 safeAudio.onerror = () => { 
+                    if (myToken !== ttsInterruptToken) return;
                     if (safeFailed) return;
                     safeFailed = true;
 
@@ -1417,8 +1522,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentAudio = backupAudio; 
                     let backupFailed = false;
 
-                    // 🌟 核心修復 3：備用模式也改為 onplaying
-                    backupAudio.onplaying = () => triggerTypewriter(backupAudio);
+                    backupAudio.onplaying = () => {
+                        if (myToken !== ttsInterruptToken) { backupAudio.pause(); return; }
+                        triggerTypewriter(backupAudio);
+                    };
                     backupAudio.onended = handleAudioEnded;
                     
                     backupAudio.onerror = () => {
@@ -1512,65 +1619,91 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     // ==========================================
-                    // 👄 終極重構：雙引擎口型同步 (精準延遲 + 防抽搐)
+                    // 👄 終極重構：物理級 RMS 雙引擎 + 霸權覆蓋系統 + 🌟 影像延遲補償器
                     // ==========================================
-                    let mouthOpen = 0;
+                    let targetMouth = 0; 
 
                     if (ttsSpeaking) {
-                        let avgVol = 0;
+                        let currentRms = 0;
                         if (audioAnalyser) {
                             const dataArray = new Uint8Array(audioAnalyser.frequencyBinCount);
                             audioAnalyser.getByteTimeDomainData(dataArray);
-                            let sum = 0;
+                            
+                            let sumSquares = 0;
                             for (let i = 0; i < dataArray.length; i++) {
-                                sum += Math.abs(dataArray[i] - 128); 
+                                const amplitude = (dataArray[i] - 128) / 128.0; 
+                                sumSquares += amplitude * amplitude;
                             }
-                            avgVol = sum / dataArray.length;
+                            currentRms = Math.sqrt(sumSquares / dataArray.length);
                         }
 
-                        // 1. 破除 CORS 封鎖：只要抓到一次真實音波，永久解鎖真實模式
-                        if (avgVol > 0.5) {
+                        // 🌟 升級 1：實作「影像延遲緩衝區」 (讓畫面刻意「等」聲音)
+                        if (!app.locals.rmsBuffer) app.locals.rmsBuffer = [];
+                        app.locals.rmsBuffer.push(currentRms);
+                        
+                        // 👇 【這裡就是你可以手動微調的終極延遲開關！】
+                        // 60fps 情況下，12 影格約等於 200 毫秒的延遲。
+                        // 如果你用藍牙耳機覺得嘴巴太快，把 12 調大 (例如 15 或 20)。
+                        // 如果你覺得嘴巴變太慢了，把它調小 (例如 0 或 5)。
+                        const delayFrames = 12; 
+                        
+                        if (app.locals.rmsBuffer.length > delayFrames) {
+                            app.locals.rmsBuffer.shift();
+                        }
+                        
+                        // 取出「過去」的音量，來驅動「現在」的嘴巴
+                        let delayedRms = app.locals.rmsBuffer[0] || 0;
+
+                        if (delayedRms > 0.01) {
                             app.locals.hasRealAudio = true;
                         }
 
-                        // 2. 記錄語音宣告開始的「零秒時刻」
                         if (!app.locals.voiceStartTime) {
                             app.locals.voiceStartTime = t;
                         }
 
-                        // 3. 雙引擎分流
                         if (app.locals.hasRealAudio) {
-                            // 🚀 [真實引擎] 直接跟隨音浪，稍微放大靈敏度 (/12)
-                            mouthOpen = Math.min(1.0, avgVol / 12);
+                            if (delayedRms < 0.015) {
+                                targetMouth = 0;
+                            } else {
+                                targetMouth = Math.min(1.0, delayedRms * 6.0);
+                            }
                         } else {
-                            // 🤖 [仿生引擎] 被瀏覽器擋住波形時，使用數學演算法救援
                             let elapsedTime = t - app.locals.voiceStartTime;
-                            
-                            // 🌟 核心修復：硬性延遲 0.3 秒！等聲音真正傳出喇叭後才開始動！
-                            if (elapsedTime > 0.3) {
-                                // 讓正弦波從 0 開始，避免瞬間張大嘴
-                                let waveMain = Math.sin((elapsedTime - 0.3) * 16) * 0.7;
-                                let waveDetail = Math.sin((elapsedTime - 0.3) * 26) * 0.3;
+                            // 🌟 升級 2：延長仿生引擎的靜音寬容度，從 0.1 秒改為 0.4 秒！
+                            // 這樣就算 TTS 音檔開頭有長達 0.3 秒的無聲空白，嘴巴也會乖乖閉著等，不會亂搶跑。
+                            if (elapsedTime > 0.4) {
+                                let waveMain = Math.sin((elapsedTime - 0.4) * 16) * 0.7;
+                                let waveDetail = Math.sin((elapsedTime - 0.4) * 26) * 0.3;
                                 let combined = Math.abs(waveMain + waveDetail);
-                                
-                                // 加入自然呼吸停頓
                                 let microPause = Math.sin(t * 8) > 0.8 ? 0 : 1.0; 
-                                mouthOpen = combined * microPause;
+                                targetMouth = combined * microPause;
+                            } else {
+                                targetMouth = 0;
                             }
                         }
                     } else {
-                        // 沒在講話時，將所有狀態徹底歸零
                         if (app.locals) {
                             app.locals.hasRealAudio = false;
                             app.locals.voiceStartTime = undefined;
+                            if (app.locals.rmsBuffer) app.locals.rmsBuffer = []; // 講完話務必清空緩衝區
                         }
                     }
 
-                    // 4. 平滑過渡系統 (Lerp)，0.7 代表快速跟上且不閃爍
-                    let currentMouth = core.getParameterValueById('ParamMouthOpenY') || 0;
-                    mouthOpen = currentMouth + (mouthOpen - currentMouth) * 0.7; 
+                    // 🌟 獨立記憶體 + 霸權覆蓋機制 (防待機動作衝突)
+                    if (typeof app.locals.lastMouthOpen === 'undefined') {
+                        app.locals.lastMouthOpen = 0;
+                    }
                     
-                    core.setParameterValueById('ParamMouthOpenY', mouthOpen);
+                    let currentMouth = app.locals.lastMouthOpen;
+                    let lerpFactor = targetMouth > currentMouth ? 0.8 : 0.5;
+                    let finalMouth = currentMouth + (targetMouth - currentMouth) * lerpFactor; 
+                    
+                    app.locals.lastMouthOpen = finalMouth; 
+
+                    if (ttsSpeaking || finalMouth > 0.01) {
+                        core.setParameterValueById('ParamMouthOpenY', finalMouth);
+                    }
                     // ==========================================
 
                     // 4. 💬 氣泡同步連動算法
