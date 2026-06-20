@@ -200,26 +200,39 @@ body, html {
 .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 150; backdrop-filter: blur(2px); transition: opacity 0.3s; }
 
 /* ==========================================
-   5. 對話區塊與氣泡
+   5. 對話區塊與氣泡 (加入 Flexbox 防撐爆終極護盾)
 ========================================== */
 .view-container { height: 100%; width: 100%; position: absolute; top: 0; padding-top: 60px; }
 #view-chat { display: flex; flex-direction: column; align-items: center; }
+
 #chat-history { 
     flex: 1; width: 100%; max-width: 800px; overflow-y: auto; 
-    padding: 20px; padding-bottom: 180px; /* 留給輸入框的空間 */
+    padding: 20px; padding-bottom: 200px; 
     display: flex; flex-direction: column; gap: 24px; scroll-behavior: smooth; 
+    overflow-x: hidden; /* 🌟 護盾 1：絕對禁止整個對話畫面被撐爆而左右滑動 */
 }
 
 .message { display: flex; width: 100%; max-width: 100%; line-height: 1.6; }
 .ai-message { justify-content: flex-start; }
-.ai-avatar { font-size: 24px; margin-right: 12px; }
-.ai-message .msg-content { flex: 1; word-wrap: break-word; color: var(--text-color); }
+.ai-avatar { font-size: 24px; margin-right: 12px; flex-shrink: 0; } /* 🌟 護盾 2：防頭像被長代碼擠壓變形 */
+
+.ai-message .msg-content { 
+    flex: 1; word-wrap: break-word; color: var(--text-color); 
+    max-width: 100%; min-width: 0; /* 🌟 護盾 3：限制內容區塊寬度，強迫內部 pre 遵守邊界 */
+}
+
 .user-message { justify-content: flex-end; }
 .user-message .msg-content { background-color: var(--msg-user-bg); color: var(--msg-user-text); padding: 12px 18px; border-radius: 20px 4px 20px 20px; max-width: 100%; word-wrap: break-word; }
 
-.message-wrapper { display: flex; flex-direction: column; max-width: 85%; }
+.message-wrapper { 
+    display: flex; flex-direction: column; max-width: 85%; 
+    min-width: 0; /* 🌟 護盾 4：Flexbox 核心收縮防禦，打破 min-width: auto 的魔咒 */
+}
 .user-message .message-wrapper { align-items: flex-end; }
-.ai-message .message-wrapper { align-items: flex-start; flex: 1; min-width: 0; }
+.ai-message .message-wrapper { 
+    align-items: flex-start; flex: 1; 
+    width: 100%; overflow: hidden; /* 🌟 護盾 5：鎖死最大邊界，溢出部分隱藏，交給內部的 pre 去滾動 */
+}
 
 .msg-footer { margin-top: 6px; padding: 0 4px; display: flex; }
 .copy-btn { background: transparent; border: 1px solid var(--border-color); color: var(--text-color); font-size: 12px; font-weight: 500; padding: 5px 10px; border-radius: 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; opacity: 0.6; transition: all 0.2s; }
@@ -231,28 +244,9 @@ body, html {
 .msg-content p { margin-bottom: 10px; line-height: 1.6; }
 .msg-content strong { color: var(--primary-color); }
 
-/* 🌟 修復 1：Markdown 超連結，綁定主題變數，杜絕瀏覽器預設深藍色 */
-.msg-content a {
-    color: var(--primary-color);
-    text-decoration: none;
-    border-bottom: 1px solid transparent;
-    transition: border-bottom 0.2s;
-}
-.msg-content a:hover {
-    border-bottom: 1px solid var(--primary-color);
-}
-
-/* 🌟 補齊：Markdown 引言 (Blockquote) 的防禦性排版 */
-.msg-content blockquote {
-    border-left: 4px solid var(--primary-color);
-    margin: 10px 0;
-    padding: 8px 16px;
-    background-color: rgba(128, 128, 128, 0.1); /* 半透明底色，深淺模式皆適用 */
-    color: var(--text-color);
-    opacity: 0.85; /* 微微刷淡，與正文做出層次區別 */
-    border-radius: 0 8px 8px 0;
-}
-
+.msg-content a { color: var(--primary-color); text-decoration: none; border-bottom: 1px solid transparent; transition: border-bottom 0.2s; }
+.msg-content a:hover { border-bottom: 1px solid var(--primary-color); }
+.msg-content blockquote { border-left: 4px solid var(--primary-color); margin: 10px 0; padding: 8px 16px; background-color: rgba(128, 128, 128, 0.1); color: var(--text-color); opacity: 0.85; border-radius: 0 8px 8px 0; }
 /* ==========================================
    6. 輸入框與上拉式上傳選單
 ========================================== */
@@ -402,23 +396,24 @@ body, html {
 @media screen and (max-width: 768px) {
     #app-header { padding: 0 8px; }
     
-    /* 標題與模型組合防擠壓 */
     .header-left { gap: 6px; }
     .menu-btn { font-size: 22px; width: 34px; padding: 2px; }
     #header-title { 
-        font-size: 16px; 
-        max-width: 160px; /* 超出螢幕時自動隱藏並顯示... */
+        font-size: 16px; max-width: 160px; 
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
         display: block !important; 
     }
     .model-dropdown-btn { font-size: 12px; padding: 4px 6px; margin-left: -6px; }
-    
     .nav-buttons button { margin-left: 2px; width: 34px; height: 34px; font-size: 18px; }
     
-    /* 對話氣泡 */
+    /* 👇 🌟 對話氣泡：放寬手機版代碼區塊的顯示空間 */
     .message { max-width: 98%; }
+    .message-wrapper { max-width: 95%; } /* <-- 新增這行：把原本預設的 85% 放大，讓程式碼黑框更寬 */
+    
     .user-message .msg-content { padding: 10px 14px; font-size: 15px; }
     .ai-message .msg-content { font-size: 15px; }
+    
+    /* ... 保持不變 ... */
     
     /* 輸入框 */
     .input-container { padding: 10px 10px 28px 10px; }
@@ -659,8 +654,8 @@ body, html {
    💻 頂級 One Dark Pro 程式碼高亮視覺系統
 ========================================== */
 .msg-content pre {
-    background-color: #282c34 !important; /* 經典深邃太空灰 */
-    color: #abb2bf !important;            /* 舒適不刺眼主文字 */
+    background-color: #282c34 !important; 
+    color: #abb2bf !important;            
     padding: 14px 18px;
     border-radius: 12px;
     overflow-x: auto;
@@ -670,6 +665,10 @@ body, html {
     line-height: 1.6;
     border: 1px solid rgba(255, 255, 255, 0.05);
     box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0,0,0,0.1);
+    
+    /* 👇 🌟 護盾 6：強制程式碼區塊絕對不允許超出父容器 */
+    max-width: 100%; 
+    box-sizing: border-box; 
 }
 
 /* 行內單個小代碼塊 (Inline Code) */
@@ -785,27 +784,34 @@ body, html {
 }
 
 /* ==========================================
-   Live2D 載入動畫 (Loading Spinner)
+   Live2D 載入動畫 (Loading Spinner - 終極全螢幕覆蓋版)
 ========================================== */
 .l2d-loading {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    /* 🌟 核心修正 1：改為固定定位，使其脫離父容器限制，直接鎖定瀏覽器視窗邊界 */
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    
+    /* 🌟 核心修正 2：強迫寬高吃滿整個網頁螢幕範圍 */
+    width: 100vw !important;
+    height: 100vh !important;
+    
     background-color: rgba(255, 255, 255, 0.6); /* 淺色模式半透明背景 */
     backdrop-filter: blur(5px); /* 毛玻璃效果 */
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 50; /* 確保蓋在 Canvas 上方 */
+    
+    /* 🌟 核心修正 3：提升至 2000，強迫蓋過頂部導航欄 (500) 與側邊欄 (1000)，達成完美全螢幕 */
+    z-index: 2000 !important; 
+    
     transition: opacity 0.4s ease, visibility 0.4s ease;
 }
 
 /* 完美適配你的深色模式 */
 [data-theme="dark"] .l2d-loading {
-    background-color: rgba(19, 19, 20, 0.7); 
+    background-color: rgba(19, 19, 20, 0.75) !important; 
 }
 
 /* 隱藏狀態 */
@@ -845,7 +851,6 @@ body, html {
     0% { opacity: 0.6; }
     100% { opacity: 1; }
 }
-
 /* =======================================================
    🌟 Live2D 對話紀錄懸浮系統 (Floating History Panel)
 ======================================================= */
