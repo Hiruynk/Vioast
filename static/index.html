@@ -10,7 +10,7 @@
     <title>Vioast</title>
     <link rel="icon" href="/static/app-logo.png">
     <link rel="apple-touch-icon" href="/static/app-logo.png">
-    <link rel="stylesheet" href="/static/style.css?v=16">
+    <link rel="stylesheet" href="/static/style.css?v=17">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/5.3.12/pixi.min.js"></script>
     <script src="/static/live2dcubismcore.min.js"></script>
@@ -175,7 +175,12 @@
                 <button class="close-btn" id="close-login">×</button>
             </div>
             <input type="text" id="inp-username" data-i18n-placeholder="placeholder_username" placeholder="帳號">
-            <input type="password" id="inp-password" data-i18n-placeholder="placeholder_password" placeholder="密碼">
+            <input type="password" id="inp-password" placeholder="密碼"
+                    autocomplete="new-password" 
+                    autocorrect="off" 
+                    autocapitalize="off" 
+                    spellcheck="false" 
+                    data-i18n-placeholder="placeholder_password">
             <p id="login-error" style="color:#ff3b30; font-size:13px; display:none;" data-i18n="login_error">帳號或密碼錯誤！</p>
             <p id="login-success" style="color:#34c759; font-size:14px; display:none; font-weight:bold; text-align:center;"></p>
             <button id="btn-do-login" class="btn-primary" data-i18n="login_btn">登入</button>

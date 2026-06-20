@@ -998,3 +998,15 @@ body, html {
 #l2d-mic-btn.recording:active {
     transform: scale(1.15) !important;
 }
+
+/* ==========================================
+   🔒 終極密碼防護盾：徹底消滅輸入殘影 (Present 專用)
+========================================== */
+#inp-password {
+    /* 強制在渲染層直接替換成圓點，無視瀏覽器預設的延遲顯示 */
+    -webkit-text-security: disc !important;
+    text-security: disc !important;
+    
+    /* 稍微拉開一點點圓點的間距，讓密碼框看起來更有質感 */
+    letter-spacing: 3px; 
+}
