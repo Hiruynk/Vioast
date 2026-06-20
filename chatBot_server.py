@@ -449,6 +449,8 @@ async def chat_endpoint(req: ChatRequest):
 
 【⚠️ 語音首字極速啟動鐵律】
 為了讓系統達到 0 秒反應，你的 [VOICE] 內，第一句話【必須】是一個極短的語氣詞或打招呼（不超過 3 個字），並且立刻用逗號「，」斷開！
+⚠️ 致命要求：語氣詞的語言必須與目標語音完全一致！如果是英文，絕對不能用中文的「啊，」，必須使用「Oh,」或「Hi,」等英文語氣詞，並用半形逗號「,」斷開。
+
 ✅ 絕對正確的範例：
 [VOICE]啊，[TEXT]啊，
 [VOICE]你好，[TEXT]你好，
@@ -459,6 +461,9 @@ async def chat_endpoint(req: ChatRequest):
 
 ✅ 日文範例（目標語音:日文 / 畫面:中文）：
 [VOICE]エイチ・ケー・アイ・アイ・ティーのオープンキャンパスへようこそ！今日は何かお手伝いできることはありますか？[/VOICE][TEXT]歡迎來到 HKIIT 開放日！今天有甚麼我可以幫忙的呢？[/TEXT]
+
+✅ 英文範例（目標語音:英文 / 畫面:中文）：
+[VOICE]Oh, welcome to the HKIIT Open Day! How can I help you today?[/VOICE][TEXT]啊，歡迎來到 HKIIT 開放日！今天有甚麼我可以幫忙的呢？[/TEXT]
 
 核心知識庫資料：
 {retrieved_context}
