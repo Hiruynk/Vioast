@@ -654,10 +654,17 @@ body, html {
 }
 .l2d-mode-btn {
     width: 38px; height: 38px; border-radius: 50%; border: none;
-    background: transparent; color: var(--text-color); font-size: 16px;
+    background: transparent; color: var(--text-color); 
+    
+    /* 🌟 核心修復：強制字體大小為 0，徹底抹殺模型載入前的過渡文字，絕對不佔據空間 */
+    font-size: 0 !important; 
+    
     cursor: pointer; transition: all 0.2s ease;
     display: flex; align-items: center; justify-content: center;
     opacity: 0.5; padding: 0;
+    
+    /* 🌟 加入防爆護盾：保證任何意外內容都絕對不會超出這個 38px 的圓形 */
+    overflow: hidden; 
 }
 .l2d-mode-btn:hover { background: rgba(128,128,128,0.1); opacity: 1; }
 /* 活化狀態下的高亮顯示 */
@@ -672,14 +679,21 @@ body, html {
 .l2d-input-bar { 
     display: flex; align-items: center; flex: 1; gap: 8px;
     background: transparent; border: none; padding: 0; 
+    min-width: 0; /* 🌟 核心修復：允許外殼收縮，防止被內容撐爆 */
 }
 #l2d-chat-input { 
     flex: 1; background: transparent; border: none; outline: none; 
     color: var(--text-color); font-size: 15px; resize: none; 
     padding: 6px 0; height: 36px; line-height: 24px;
+    min-width: 0; /* 🌟 核心修復：打破長 placeholder 的最小寬度限制，強迫讓位 */
 }
 
-.l2d-action-btn { width: 38px; height: 38px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; transition: all 0.2s ease; }
+.l2d-action-btn { 
+    width: 38px; height: 38px; border-radius: 50%; border: none; 
+    display: flex; align-items: center; justify-content: center; 
+    cursor: pointer; font-size: 16px; transition: all 0.2s ease; 
+    flex-shrink: 0; /* 🌟 核心修復：保證麥克風和發送鍵絕對不變形、不被擠壓 */
+}
 .l2d-action-btn svg { margin: 0 !important; position: static !important; }
 .mic-btn { background: #0b93f6; color: white; }
 .mic-btn.recording { background: #ff3b30 !important; animation: l2dPulse 1.4s infinite; }
@@ -789,8 +803,8 @@ body, html {
     .live2d-dashboard { 
         /* 👇 關鍵修復：底部距離大幅拉高到 80px，徹底避開手機瀏覽器的底部導航列 */
         bottom: 30px; 
-        padding: 14px 16px; 
-        width: 92%; 
+        padding: 10px 12px; 
+        width: 94%; 
     }
     
     .l2d-mode-btn {

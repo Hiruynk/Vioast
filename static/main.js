@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let appSettings = {
         model: 'gemini', apiKey: '', theme: 'auto',
         inputLang: 'cantonese', outputLang: 'cantonese', textLang: 'chinese',
+        sakuraEffect: true, // 🌟 新增：櫻花特效預設開啟
         live2dLangSet: false,
         appLang: 'zh-HK'
     };
@@ -83,6 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selInputLang: document.getElementById('sel-input-lang'),
         selOutputLang: document.getElementById('sel-output-lang'),
         selTextLang: document.getElementById('sel-text-lang'),
+        selSakuraEffect: document.getElementById('sel-sakura-effect'), // 🌟 新增：抓取櫻花選單
         live2dSubtitle: document.getElementById('live2d-subtitle'),
         btnSettings: document.getElementById('btn-settings'), 
         btnLogin: document.getElementById('btn-login'),
@@ -136,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
             live2d_subtitle: "Click the microphone button on the bottom right to talk to me",
             voice_header: `${svgSettings} Voice Dialogue Settings`, voice_input_lang: `${svgMic} Your Input Language:`,
             voice_output_lang: `${svgSpeaker} AI Voice Output:`, voice_text_lang: `${svgPen} Screen Display Text:`,
+            settings_sakura: "🌸 Sakura Effect:", sakura_on: "On (Default)", sakura_off: "Off (Performance)", // 🌟 新增
             lang_cantonese: "Cantonese", lang_mandarin: "Mandarin", lang_japanese: "Japanese", lang_english: "English",
             lang_chinese_text: "Chinese", lang_english_text: "English", voice_start_btn: "Confirm and Enter",
             model_gemini_desc: "Fastest Response", model_gemma_desc: "Local Computing",
@@ -184,6 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
             live2d_subtitle: "點擊右下角麥克風與我對話",
             voice_header: `${svgSettings} 語音對話設定`, voice_input_lang: `${svgMic} 您的輸入語言：`,
             voice_output_lang: `${svgSpeaker} AI 語音輸出：`, voice_text_lang: `${svgPen} 螢幕顯示文字：`,
+            settings_sakura: "🌸 櫻花飄落特效：", sakura_on: "開啟 (預設)", sakura_off: "關閉 (提升效能)", // 🌟 新增
             lang_cantonese: "廣東話", lang_mandarin: "普通話", lang_japanese: "日文", lang_english: "英文",
             lang_chinese_text: "中文", lang_english_text: "英文", voice_start_btn: "確認並進入",
             model_gemini_desc: "回覆最快", model_gemma_desc: "本地運算",
@@ -194,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tooltip_upload: "上傳",
             l2d_mode_auto: `${svgMic} 直發模式`, l2d_mode_verify: `${svgPen} 校對模式`,
             l2d_placeholder_auto: "請按麥克風語音對話...",
-            l2d_placeholder_verify: "語音或打字輸入後發送...",
+            l2d_placeholder_verify: "輸入後發送...",
             local_help_title: "❓ 本地大模型啟動教學",
             local_help_s1_title: "步驟 1：啟動 API 腳本",
             local_help_s1_desc: "在你的PC主機上，打開終端機並執行腳本：",
@@ -232,6 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
             live2d_subtitle: "点击右下角麦克风与我对话",
             voice_header: `${svgSettings} 语音对话设定`, voice_input_lang: `${svgMic} 您的输入语言：`,
             voice_output_lang: `${svgSpeaker} AI 语音输出：`, voice_text_lang: `${svgPen} 屏幕显示文字：`,
+            settings_sakura: "🌸 樱花飘落特效：", sakura_on: "开启 (默认)", sakura_off: "关闭 (提升效能)", // 🌟 新增
             lang_cantonese: "广东话", lang_mandarin: "普通话", lang_japanese: "日文", lang_english: "英文",
             lang_chinese_text: "中文", lang_english_text: "英文", voice_start_btn: "确认并进入",
             model_gemini_desc: "回复最快", model_gemma_desc: "本地运算",
@@ -242,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tooltip_upload: "上传",
             l2d_mode_auto: `${svgMic} 直发模式`, l2d_mode_verify: `${svgPen} 校对模式`,
             l2d_placeholder_auto: "请按麦克风语音对话...",
-            l2d_placeholder_verify: "语音或打字输入后发送...",
+            l2d_placeholder_verify: "输入后发送...",
             local_help_title: "❓ 本地大模型启动教学",
             local_help_s1_title: "步骤 1：启动 API 脚本",
             local_help_s1_desc: "在你的PC主机上，打开终端并执行脚本：",
@@ -437,10 +442,30 @@ document.addEventListener('DOMContentLoaded', () => {
         closeSidebarHandler(); 
     });
 
-    dom.btnSettings.addEventListener('click', () => { 
-        updateModelBadge(); 
-        dom.settingsModal.classList.remove('hidden'); 
-        closeSidebarHandler(); 
+    dom.btnSettings.addEventListener('click', () => {
+        dom.inpApiKey.value = appSettings.apiKey || '';
+        dom.inputLocalUrl.value = appSettings.localUrl || '';
+        dom.inputLocalModel.value = appSettings.localModel || 'gemma4:12b';
+        dom.selTheme.value = appSettings.theme || 'auto';
+
+        // 🌟 1. 讀取目前的櫻花設定值
+        const selSakura = document.getElementById('sel-sakura-effect');
+        if (selSakura) {
+            selSakura.value = appSettings.sakuraEffect === false ? 'off' : 'on';
+        }
+
+        // 🌟 2. 智慧判斷：如果目前是 Live2D 模式，就顯示櫻花開關；否則隱藏！
+        const sakuraGroup = document.getElementById('sakura-setting-group');
+        if (sakuraGroup) {
+            if (currentMode === 'live2d') {
+                sakuraGroup.classList.remove('hidden');
+            } else {
+                sakuraGroup.classList.add('hidden');
+            }
+        }
+
+        dom.settingsModal.classList.remove('hidden');
+        closeSidebarHandler();
     });
 
     document.getElementById('btn-local-help').addEventListener('click', (e) => {
@@ -531,6 +556,13 @@ document.addEventListener('DOMContentLoaded', () => {
         appSettings.localUrl = dom.inputLocalUrl.value.trim();
         appSettings.localModel = newLocalModel;
         appSettings.theme = dom.selTheme.value;
+
+        // 🌟 1. 新增：儲存櫻花開關狀態
+        const selSakura = document.getElementById('sel-sakura-effect');
+        if (selSakura) {
+            appSettings.sakuraEffect = (selSakura.value === 'on');
+        }
+
         localStorage.setItem('hkiit_settings', JSON.stringify(appSettings));
         
         if (currentUser) {
@@ -548,6 +580,11 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch(e) {}
         }
         applyTheme(); updateModelBadge(); 
+
+        // 🌟 2. 新增：如果處於 Live2D 模式，儲存後立刻呼叫引擎，即時開啟或關閉櫻花！
+        if (currentMode === 'live2d' && window.toggleSakuraPetals) {
+            window.toggleSakuraPetals();
+        }
         
         dom.settingsSuccess.style.display = 'block';
         setTimeout(() => { dom.settingsSuccess.style.display = 'none'; }, 2000); 
@@ -1403,14 +1440,11 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('hkiit_settings', JSON.stringify(appSettings)); 
 
         dom.langModal.classList.add('hidden'); 
-        
-        // 🌟 修正 1-B：刪除容易出 Bug 的重複代碼，直接統一呼叫 switchMode 走標準流程！
         switchMode('live2d');
     });
 
     dom.btnLive2DSettings.addEventListener('click', () => {
         dom.selOutputLang.disabled = false;
-        // 👇 關鍵修復：打開面板時，自動將 UI 選單同步為你真實儲存的語言設定！
         dom.selInputLang.value = appSettings.inputLang || 'cantonese';
         dom.selOutputLang.value = appSettings.outputLang || 'cantonese';
         dom.selTextLang.value = appSettings.textLang || 'chinese';
@@ -2196,34 +2230,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    async function initLive2D() {
-        if (live2dApp) return;
+    // ==========================================
+    // 🌸 櫻花特效引擎 (支援效能偵測與安全開關)
+    // ==========================================
+    window.toggleSakuraPetals = function() {
+        const container = document.getElementById('view-live2d');
+        if (!container) return;
 
-        // 🌸 動態產生 25 片隨機櫻花粒子
-        function createSakuraPetals() {
-            const container = document.getElementById('view-live2d');
-            // 防呆：如果已經有櫻花了就不再重複生成
-            if (!container || container.querySelector('.sakura-petal')) return; 
-            
+        // 🌟 1. 效能與相容性自動偵測 (Auto-Detect)
+        // 偵測使用者系統是否在 OS 層級開啟了「減少動態效果」，以此判斷硬體是否受限
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        
+        if (prefersReducedMotion) {
+            console.warn("⚠️ 偵測到系統效能限制，已自動強制關閉櫻花特效");
+            appSettings.sakuraEffect = false;
+            if (dom.selSakuraEffect) dom.selSakuraEffect.value = 'off';
+        }
+
+        // 2. 清除畫面上現有的所有櫻花殘骸
+        container.querySelectorAll('.sakura-petal').forEach(p => p.remove());
+
+        // 3. 如果設定為關閉，就此中斷，不再耗費資源生成
+        if (appSettings.sakuraEffect === false) return;
+
+        // 4. 生成櫻花 (加入 try-catch 護盾，若有任何渲染阻擋自動關閉)
+        try {
             for (let i = 0; i < 25; i++) {
                 let petal = document.createElement('div');
                 petal.className = 'sakura-petal';
-                // 隨機生成 0~100vw 的橫向位置
                 petal.style.left = (Math.random() * 100) + 'vw';
-                // 隨機下墜時間與搖曳頻率，營造錯落有致的物理感
                 petal.style.animationDuration = (Math.random() * 5 + 6) + 's, ' + (Math.random() * 3 + 3) + 's';
-                // 隨機延遲，避免一開始全部一起掉下來
                 petal.style.animationDelay = (Math.random() * 10) + 's, ' + (Math.random() * 5) + 's';
-                // 隨機大小 (6px ~ 12px)
                 let size = Math.random() * 6 + 6;
                 petal.style.width = size + 'px';
                 petal.style.height = size + 'px';
                 
-                // 插入到容器內 (確保放在 live2d-stage-container 之前，保持在背景)
                 container.insertBefore(petal, document.getElementById('live2d-stage-container'));
             }
+        } catch (e) {
+            console.warn("櫻花特效渲染失敗，已啟動安全保護自動關閉", e);
+            appSettings.sakuraEffect = false; 
         }
-        createSakuraPetals(); // 啟動櫻花引擎！
+    };
+
+    async function initLive2D() {
+        if (live2dApp) return;
+
+        // 🌟 啟動櫻花引擎 (會自動判斷開關與效能)
+        window.toggleSakuraPetals();
 
         const canvas = document.getElementById('live2d-canvas');
         const stageContainer = document.getElementById('live2d-stage-container');
