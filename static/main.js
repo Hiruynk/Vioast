@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
             local_help_s3_url_desc: "貼上剛才獲取的 HTTPS 網址。",
             local_help_s3_model_title: "模型名稱：",
             local_help_s3_model_desc: "填寫PC上已存在的模型。",
-            l2d_placeholder_verify: "語音或打字輸入後發送...",
+            l2d_placeholder_verify: "輸入後發送...",
             l2d_loading_text: "模型載入中，請稍候...", // 🌟 新增繁體
             local_help_title: "❓ 本地大模型啟動教學",
             tooltip_l2d_history: "Live2D 聊天紀錄", l2d_history_title: "聊天紀錄",
@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
             local_help_s3_url_desc: "贴上刚才获取的 HTTPS 网址。",
             local_help_s3_model_title: "模型名称：",
             local_help_s3_model_desc: "填写PC上已存在的模型。",
-            l2d_placeholder_verify: "语音或打字输入后发送...",
+            l2d_placeholder_verify: "输入后发送...",
             l2d_loading_text: "模型载入中，请稍候...", // 🌟 新增簡體
             local_help_title: "❓ 本地大模型启动教学",
             tooltip_l2d_history: "Live2D 聊天记录", l2d_history_title: "聊天记录",
