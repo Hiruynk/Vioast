@@ -584,7 +584,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let displayModelName = appSettings.localModel || 'gemma4:12b';
         let formattedName = displayModelName.split(':').map((part, index) => {
             // 第一部分首字母大寫，第二部分(參數大小)全大寫
-            if (index === 0) return part.charAt(0).toUpperCase() + part.slice(1);
+            if (index === 0) {
+                let capitalized = part.charAt(0).toUpperCase() + part.slice(1);
+                // 2. 在英文字母與數字之間自動插入空格 (例如 Gemma4 -> Gemma 4)
+                return capitalized.replace(/([a-zA-Z])(\d)/g, '$1 $2');
+            }
             return part.toUpperCase();
         }).join(' ');
 
