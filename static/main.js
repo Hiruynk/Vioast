@@ -1277,30 +1277,75 @@ document.addEventListener('DOMContentLoaded', () => {
         return true;
     }
 
+    // =======================================================
+    // 🎤 終極強化版：拋棄式語音識別引擎 (徹底解決手機卡死問題)
+    // =======================================================
     function toggleL2dSpeech() {
+        // 1. 如果正在錄音中，點擊就是「停止」
+        if (isSpeechRecording && recognition) {
+            recognition.stop();
+            return;
+        }
+
+        // 2. 檢查環境是否支援 (防呆：揪出非 HTTPS 連線)
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("⚠️ 無法啟動麥克風！\n原因 1：瀏覽器不支援 (請使用 Safari 或 Chrome)。\n原因 2：您目前未使用 HTTPS 安全連線 (手機端嚴格要求)。\n👉 解決方案：請確保您是用 Cloudflare Tunnel (https://...) 的網址開啟此網頁！");
+            return;
+        }
+
+        // 3. 🌟 核心修復：每次都宣告一個「全新」的識別實例，徹底避開底層狀態卡死
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        
+        // 套用使用者在設定面板選擇的語言
+        recognition.lang = sttLangMap[appSettings.inputLang] || 'zh-HK';
+
+        recognition.onstart = () => {
+            isSpeechRecording = true;
+            const micBtn = document.getElementById('l2d-mic-btn');
+            if (micBtn) micBtn.classList.add('recording');
+        };
+
+        recognition.onresult = (event) => {
+            const resultText = event.results[0][0].transcript;
+            const inputTextArea = document.getElementById('l2d-chat-input');
+            inputTextArea.value = resultText;
+
+            // 如果是直發模式，拿到文字就直接送出
+            if (l2dInputMode === 'auto') {
+                sendLive2DMessage(resultText);
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.error("語音識別錯誤:", event.error);
+            if (event.error === 'not-allowed') {
+                alert("⚠️ 麥克風權限被拒絕！\n請在手機瀏覽器的網址列旁邊點擊「AA」或「鎖頭」圖示，手動允許網站存取麥克風。");
+            } else if (event.error === 'network') {
+                alert("⚠️ 語音識別需要網路連線，或您的系統正處於省電/隱私阻擋模式。");
+            }
+            // no-speech (沒講話) 屬於正常現象，不跳警告，直接安靜關閉即可
+            stopL2dRecognition();
+        };
+
+        recognition.onend = () => { 
+            stopL2dRecognition(); 
+            // 🌟 引擎任務結束，徹底釋放變數，下次點擊會產生新的
+            recognition = null; 
+        };
+
+        // 4. 喚醒音訊上下文 (解決 iOS 靜音播放問題)
         if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
         if (audioContext.state === 'suspended') audioContext.resume();
 
-        if (!recognition) {
-            const success = initWebSpeechAPI();
-            if (!success) return; // 初始化失敗則直接離開
-        }
-
-        if (isSpeechRecording) {
-            recognition.stop();
-        } else {
-            try {
-                // 套用使用者在設定面板選擇的語言
-                recognition.lang = sttLangMap[appSettings.inputLang] || 'zh-HK';
-                recognition.start();
-            } catch (e) {
-                // 🌟 防呆 3：防止連續點擊導致 "recognition has already started" 引擎崩潰
-                console.warn("語音啟動衝突，正在重置狀態...", e);
-                stopL2dRecognition();
-                setTimeout(() => {
-                    try { recognition.start(); } catch(err) {}
-                }, 300);
-            }
+        // 5. 點火啟動！
+        try {
+            recognition.start();
+        } catch (e) {
+            console.warn("麥克風啟動異常:", e);
+            stopL2dRecognition();
         }
     }
 
