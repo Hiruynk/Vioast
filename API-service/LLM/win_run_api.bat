@@ -1,84 +1,67 @@
-#!/bin/bash
-cd "$(dirname "$0")"
+@echo off
+setlocal enabledelayedexpansion
+cd /d "%~dp0"
 
-echo "=========================================================="
-echo "🔍 1. 正在檢查 Ollama 環境..."
-echo "=========================================================="
-if command -v ollama &> /dev/null; then
-    echo "✅ 偵測到 Ollama 已安裝！"
-else
-    echo "❌ 未偵測到 Ollama！正在透過官方一鍵指令為您自動安裝..."
-    echo "📥 正在下載並執行 Ollama 安裝腳本，請稍候..."
-    
-    # 執行官方一鍵安裝
-    curl -fsSL https://ollama.com/install.sh | sh
-    
-    # 再次檢查是否安裝成功
-    if ! command -v ollama &> /dev/null; then
-        echo "⚠️ 自動安裝可能需要權限，或遇到環境變數未更新的問題。"
-        echo "🌐 請手動前往官網下載：https://ollama.com/download"
-        exit 1
-    fi
-    echo "✅ Ollama 安裝成功！"
-fi
-
-# 確保 Ollama 服務已在背景啟動
-if ! lsof -i :11434 &> /dev/null; then
-    echo "⚙️ 正在啟動 Ollama 背景服務..."
-    open -a "Ollama"
-    sleep 5
-fi
-
-echo "=========================================================="
-echo "📥 2. 正在檢查 Python 依賴套件..."
-echo "=========================================================="
-if [ -d "venv" ]; then
-    source venv/bin/activate
-fi
-python3 -m pip install -r requirements.txt
-
-echo "=========================================================="
-echo "🚀 3. 正在啟動 本地 LLM API 伺服器 (Port: 8001)..."
-echo "=========================================================="
-# 確保 8001 沒有被舊程序佔用
-lsof -ti :8001 | xargs kill -9 &> /dev/null
-python3 -m uvicorn local_llm_api:app --host 0.0.0.0 --port 8001 &
-
-# 等待 Port 8001 成功開啟
-until lsof -i :8001 | grep -q "LISTEN"; do
-    sleep 0.5
-done
-echo "✅ API 伺服器已成功就緒！"
-echo ----------------------------------------------------------
-echo 💡 模型下載提醒：
-echo    若您尚未下載模型，請開啟一個【新的終端機視窗】輸入：
-echo    ollama pull ^<模型名稱^>  (例如: ollama pull gemma4:12b)
-echo ----------------------------------------------------------
 echo ==========================================================
-echo ☁️ 4. 正在檢查/自動安裝 Cloudflare Tunnel...
+echo 🔍 1. 正在檢查 Ollama 環境...
 echo ==========================================================
-
-where cloudflared >nul 2>nul
-if %errorlevel% neq 0 (
-    echo ⚠️ 未偵測到 cloudflared，正在透過 winget 自動安裝...
-    
-    :: 使用 winget 安裝 cloudflared
-    winget install --id Cloudflare.cloudflared --silent
-    
-    echo ✅ Cloudflare 安裝完成！
-    echo 💡 若指令仍未生效，請重啟終端機以更新環境變數。
-    pause
+tasklist /FI "IMAGENAME eq ollama.exe" 2>NUL | find /I /N "ollama.exe">NUL
+if "%ERRORLEVEL%"=="0" (
+    echo ✅ 偵測到 Ollama 正在執行！
+) else (
+    echo ⚠️ 未偵測到 Ollama 正在執行，請手動啟動 Ollama 應用程式。
+    echo 🌐 下載連結：https://ollama.com/download
 )
 
-echo "⏳ 正在產生臨時公網 URL..."
-echo "----------------------------------------------------------"
+echo ==========================================================
+echo 📥 2. 正在檢查 Python 依賴套件...
+echo ==========================================================
+if exist "venv\Scripts\activate.bat" (
+    call venv\Scripts\activate.bat
+)
+python -m pip install -r requirements.txt
 
-# 啟動 cloudflared 並即時過濾出產生的 trycloudflare 網址
-cloudflared tunnel --url http://127.0.0.1:8001 2>&1 | tee /tmp/cf_tunnel.log | grep --line-buffered -o 'https://[^ ]*\.trycloudflare\.com' | while read -r url; do
-    echo -e "\033[1;32m🔥 您的本地大模型外網穿透網址已就緒！\033[0m"
-    echo -e "\033[1;36m🔗 網址: $url \033[0m"
-    echo "👉 請將此網址複製到網頁的 local_url 設定中。"
-    echo "----------------------------------------------------------"
-done
+echo ==========================================================
+echo 🚀 3. 正在啟動 本地 LLM API 伺服器 (Port: 8001)...
+echo ==========================================================
+:: 關閉佔用 8001 的程序
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8001"') do (
+    taskkill /F /PID %%a >nul 2>&1
+)
 
-wait
+start /B python -m uvicorn local_llm_api:app --host 0.0.0.0 --port 8001
+
+echo 等待伺服器啟動...
+:wait_loop
+timeout /t 2 >nul
+netstat -aon | findstr ":8001" | findstr "LISTENING" >nul
+if errorlevel 1 goto wait_loop
+
+echo ✅ API 伺服器已成功就緒！
+echo ----------------------------------------------------------
+echo 💡 模型下載提醒：請開啟新視窗輸入：ollama pull ^<模型名稱^>
+echo ----------------------------------------------------------
+
+echo ==========================================================
+echo ☁️ 4. 正在檢查/執行 Cloudflare Tunnel...
+echo ==========================================================
+where cloudflared >nul 2>nul
+if %errorlevel% neq 0 (
+    echo ⚠️ 未偵測到 cloudflared，嘗試安裝...
+    winget install --id Cloudflare.cloudflared --silent
+    echo ✅ 安裝完成，請重新執行此腳本。
+    pause
+    exit
+)
+
+echo ⏳ 正在產生臨時公網 URL (請查看下方輸出的連結)...
+echo ----------------------------------------------------------
+
+:: 啟動並捕捉連結
+for /f "tokens=*" %%a in ('cloudflared tunnel --url http://127.0.0.1:8001 2^>^&1 ^| findstr "trycloudflare.com"') do (
+    echo 🔥 您的本地大模型外網穿透網址已就緒！
+    echo 🔗 網址: %%a
+    echo 👉 請將此網址複製到您的設定中。
+)
+
+pause
