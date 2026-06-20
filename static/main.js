@@ -112,6 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const svgWarn = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffcc00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px; position: relative; top: -1px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
     const svgCopy = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px; position: relative; top: -1px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
     const svgFail = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff3b30" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px; position: relative; top: -1px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+    const svgImageIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; position: relative; top: -1px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`;
+    const svgFileIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; position: relative; top: -1px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
 
     // ===== 完備多國語言包 =====
     const translations = {
@@ -160,6 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
             l2d_loading_text: "Loading model, please wait...", // 🌟 新增英文
             local_help_title: "❓ Local LLM Startup Tutorial",
             tooltip_l2d_history: "Live2D Chat Log", l2d_history_title: "Chat History",
+            tooltip_l2d_auto: "Voice Direct", tooltip_l2d_verify: "Verify Mode",
             welcome_md: `Hello! Welcome to the **IVE HKIIT Open Day**! I am your official **AI Chatbot Assistant**.\n\nThe IVE IT Discipline has been upgraded to the **Hong Kong Institute of Information Technology (HKIIT)**! I'm here to provide you with syllabus details, tuition fees, and admission requirements for our Higher Diploma programs, or navigate you through today's activities!\n\n**Try asking me:**\n* Syllabus: \`What will I learn in Higher Diploma in Data Science and AI (IT114126)?\`\n* Admission: \`What are the requirements for Real Estate (BA114037)?\`\n* Transport: \`How do I get to IVE Tsing Yi?\`\n\nHow can I help you today?`
         },
         'zh-HK': {
@@ -207,6 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
             l2d_loading_text: "模型載入中，請稍候...", // 🌟 新增繁體
             local_help_title: "❓ 本地大模型啟動教學",
             tooltip_l2d_history: "Live2D 聊天紀錄", l2d_history_title: "聊天紀錄",
+            tooltip_l2d_auto: "語音直發", tooltip_l2d_verify: "打字校對",
             welcome_md: `您好！歡迎來到 **IVE HKIIT 開放日**！我是您的官方 **AI Chatbot 智能升學諮詢助手**。\n\n香港專業教育學院（IVE）資訊科技學系已全新升級為 **香港資訊科技學院（HKIIT）**！在這裡，我能為您提供各項熱門的高級文憑 (Higher Diploma) 課程大綱、學費、入學要求，或是為您導航今天的開放日活動！\n\n**您可以試著這樣問我：**\n* 課程內容：\`IT114126 數據科學及人工智能高級文憑學咩？\`\n* 入學條件：\`BA114037 房地產高級文憑有咩入學要求？\`\n* 交通導航：\`青衣 IVE 點樣去？\` \n\n請問今天有甚麼我可以幫到您？`
         },
         'zh-CN': {
@@ -254,6 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
             l2d_loading_text: "模型载入中，请稍候...", // 🌟 新增簡體
             local_help_title: "❓ 本地大模型启动教学",
             tooltip_l2d_history: "Live2D 聊天记录", l2d_history_title: "聊天记录",
+            tooltip_l2d_auto: "语音直发", tooltip_l2d_verify: "打字校对",
             welcome_md: `您好！欢迎来到 **IVE HKIIT 开放日**！我是您的官方 **AI Chatbot 智能升学咨询助手**。\n\n香港专业教育学院（IVE）资讯科技学系已全新升级为 **香港资讯科技学院（HKIIT）**！在这里，我能为您提供各项热门的高级文凭 (Higher Diploma) 课程大纲、学费、入学要求，或是为您导航今天的开放日活动！\n\n**您可以试着这样问我：**\n* 课程内容：\`IT114126 数据科学及人工智能高级文凭学什么？\`\n* 入学条件：\`BA114037 房地产高级文凭有什么入学要求？\`\n* 交通导航：\`青衣 IVE 怎么去？\` \n\n请问今天有什么我可以帮到您？`
         }
     };
@@ -581,45 +586,58 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function updateModelBadge() {
-        // 🌟 動態轉換模型名稱格式 (例如 gemma4:12b -> Gemma4 12B)
-        let displayModelName = appSettings.localModel || 'gemma4:12b';
-        let formattedName = displayModelName.split(':').map((part, index) => {
-            // 第一部分首字母大寫，第二部分(參數大小)全大寫
-            if (index === 0) {
-                let capitalized = part.charAt(0).toUpperCase() + part.slice(1);
-                // 2. 在英文字母與數字之間自動插入空格 (例如 Gemma4 -> Gemma 4)
-                return capitalized.replace(/([a-zA-Z])(\d)/g, '$1 $2');
-            }
-            return part.toUpperCase();
-        }).join(' ');
-
-        dom.dropdownItems.forEach(i => {
-            // 動態修改下拉選單裡本地模型的那一項文字
-            if (i.getAttribute('data-value') === 'gemma') {
-                i.querySelector('.item-title').innerText = formattedName;
-            }
-
-            if(i.getAttribute('data-value') === appSettings.model) {
-                i.classList.add('active');
-                if(dom.selectedModelName) {
-                    dom.selectedModelName.innerText = i.querySelector('.item-title').innerText;
+        try {
+            let displayModelName = appSettings.localModel || 'gemma4:12b';
+            let formattedName = displayModelName.split(':').map((part, index) => {
+                if (index === 0) {
+                    let capitalized = part.charAt(0).toUpperCase() + part.slice(1);
+                    return capitalized.replace(/([a-zA-Z])(\d)/g, '$1 $2');
                 }
-            } else {
-                i.classList.remove('active');
-            }
-        });
-        
-        dom.inpApiKey.value = appSettings.apiKey;
-        dom.inputLocalUrl.value = appSettings.localUrl || '';
-        dom.inputLocalModel.value = appSettings.localModel || 'gemma4:12b';
-        dom.selTheme.value = appSettings.theme;
+                return part.toUpperCase();
+            }).join(' ');
 
-        if (appSettings.model === 'gemini') {
-            dom.apiKeyContainer.style.display = 'block';
-            dom.localNodeContainer.style.display = 'none';
-        } else {
-            dom.apiKeyContainer.style.display = 'none';
-            dom.localNodeContainer.style.display = 'block';
+            if (dom.dropdownItems) {
+                dom.dropdownItems.forEach(i => {
+                    // 👇 🌟 核心修復：使用 textContent 代替 innerText！
+                    // 因為隱藏狀態下的 DOM，innerText 會回傳空字串，導致文字消失。
+                    let titleSpan = i.querySelector('.item-title');
+                    let titleText = titleSpan ? titleSpan.textContent : i.textContent.trim();
+
+                    if (i.getAttribute('data-value') === 'gemma' && titleSpan) {
+                        titleSpan.textContent = formattedName;
+                        titleText = formattedName; 
+                    }
+
+                    if(i.getAttribute('data-value') === appSettings.model) {
+                        i.classList.add('active');
+                        if(dom.selectedModelName) {
+                            dom.selectedModelName.textContent = titleText; // 🌟 這裡也改為 textContent
+                        }
+                    } else {
+                        i.classList.remove('active');
+                    }
+                });
+            }
+            
+            if (dom.inpApiKey) dom.inpApiKey.value = appSettings.apiKey || '';
+            if (dom.inputLocalUrl) dom.inputLocalUrl.value = appSettings.localUrl || '';
+            if (dom.inputLocalModel) dom.inputLocalModel.value = appSettings.localModel || 'gemma4:12b';
+            if (dom.selTheme) dom.selTheme.value = appSettings.theme || 'auto';
+
+            if (dom.apiKeyContainer && dom.localNodeContainer) {
+                if (appSettings.model === 'gemini' || appSettings.model === 'groq') {
+                    dom.apiKeyContainer.style.display = 'block';
+                    dom.localNodeContainer.style.display = 'none';
+                } else if (appSettings.model === 'gemma') {
+                    dom.apiKeyContainer.style.display = 'none';
+                    dom.localNodeContainer.style.display = 'block';
+                } else {
+                    dom.apiKeyContainer.style.display = 'none';
+                    dom.localNodeContainer.style.display = 'none';
+                }
+            }
+        } catch (e) {
+            console.error("模型名稱更新攔截:", e);
         }
     }
 
@@ -709,15 +727,31 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     function copyTextToClipboard(text, btn) {
         const dict = translations[appSettings.appLang || 'en'];
-        
+        const copyText = dict.btn_copy.replace(/<[^>]*>?/gm, '').trim();
+        const copiedText = dict.btn_copied.replace(/<[^>]*>?/gm, '').trim();
+        const failText = dict.btn_copy_fail.replace(/<[^>]*>?/gm, '').trim();
+
         function showSuccess() {
             btn.classList.add('success');
-            btn.innerHTML = dict.btn_copied;
+            btn.innerHTML = svgCheck; // 🌟 只放 SVG
+            btn.setAttribute('data-tooltip', copiedText); 
             setTimeout(() => { 
                 btn.classList.remove('success'); 
-                btn.innerHTML = dict.btn_copy; 
+                btn.innerHTML = svgCopy; 
+                btn.setAttribute('data-tooltip', copyText); 
             }, 1800); 
         }
+
+        function showError(errMessage) {
+            alert("複製失敗: " + errMessage);
+            btn.innerHTML = svgFail; // 🌟 只放 SVG
+            btn.setAttribute('data-tooltip', failText); 
+            setTimeout(() => { 
+                btn.innerHTML = svgCopy; 
+                btn.setAttribute('data-tooltip', copyText); 
+            }, 1800);
+        }
+        // ... (下方 navigator.clipboard 保留不動)
 
         function showError(errMessage) {
             // 在手機上彈出真實錯誤原因，方便你 Debug
@@ -889,11 +923,19 @@ document.addEventListener('DOMContentLoaded', () => {
         footer.className = 'msg-footer';
         const copyBtn = document.createElement('button');
         copyBtn.className = 'copy-btn';
-        copyBtn.setAttribute('data-i18n', 'btn_copy');
-        copyBtn.innerHTML = dict.btn_copy;
+        
+        // 🌟 防禦型抓取字典，只保留 SVG 並加上 hover 介紹框
+        const dictSafe = translations[appSettings.appLang || 'en'];
+        const btnCopyRaw = dictSafe ? dictSafe.btn_copy : "Copy";
+        const copyText = btnCopyRaw ? btnCopyRaw.replace(/<[^>]*>?/gm, '').trim() : "Copy";
+        
+        copyBtn.innerHTML = typeof svgCopy !== 'undefined' ? svgCopy : "📋";
+        copyBtn.setAttribute('data-tooltip', copyText);
+        if (window.bindTooltipEvents) window.bindTooltipEvents(copyBtn); 
+        
         copyBtn.onclick = () => copyTextToClipboard(rawText, copyBtn);
         footer.appendChild(copyBtn);
-
+        
         wrapper.appendChild(content);
         wrapper.appendChild(footer);
 
@@ -915,47 +957,42 @@ document.addEventListener('DOMContentLoaded', () => {
     async function sendMessage(text) {
         const dict = translations[appSettings.appLang || 'en'];
 
-        // 🌟 防呆攔截：沒有文字，或是「正在處理其他請求中」，直接無視！
         if (!text.trim() && !fileContentBuffer) return;
-        if (isProcessingRequest) return; 
-
-        // 🌟 啟動防連點鎖
+        if (isProcessingRequest) return;
         isProcessingRequest = true;
 
-        // 👇 1. 新增：最高優先級攔截清除指令！(無視 API Key 有無)
         const lowerText = text.trim().toLowerCase();
         if (lowerText === "clear system cache" || lowerText === "強制清除緩存") {
             alert("🚨 收到強制清除指令！正在抹除本地所有緩存並重啟系統...");
-            localStorage.clear();
-            window.location.reload();
-            return;
+            localStorage.clear(); window.location.reload(); return;
         }
 
-            // ... (大約在 sendMessage 函數的前幾行)
-        const userText = text.trim() ? text : `[傳送了參考檔案]`;
+        const userText = text.trim() ? text : ` `;
         
-        // 🌟 新增：在清空緩存前，先提取出當前的附加檔案 payload
         let currentFilePayload = null;
         if (attachedFile) {
             currentFilePayload = { name: attachedFile.name, type: attachedFile.type, data: attachedFile.data };
         }
 
+        // 🌟 核心修復：提取完檔案數據後，立刻呼叫引擎瞬間洗淨畫面的預覽縮圖！
+        if (window.clearAttachment) window.clearAttachment();
+
         let msgObj = { role: 'user', content: userText };
         if (currentFilePayload) {
-            msgObj.file = currentFilePayload; // 🌟 將檔案合併進對話歷史紀錄
+            msgObj.file = { ...currentFilePayload };
         }
         currentMessages.push(msgObj);
         saveSession();
         
-        // 🌟 核心修改：將檔案 payload 作為第四個參數，傳給 UI 渲染器
         appendMessageUI(userText, 'user', true, currentFilePayload); 
         
-        attachedFile = null; // 🌟 功成身退，立刻重置暫存器
         dom.chatInput.value = '';
-        dom.chatInput.style.height = 'auto'; // 【新增】：發送後強制將高度重置為初始狀態
+        dom.chatInput.style.height = 'auto'; 
 
         if (appSettings.model === 'gemini' && !appSettings.apiKey) {
-            appendMessageUI(dict.err_no_api_key, 'ai'); return;
+            appendMessageUI(dict.err_no_api_key, 'ai');
+            isProcessingRequest = false; 
+            return;
         }
 
         const div = document.createElement('div');
@@ -981,20 +1018,22 @@ document.addEventListener('DOMContentLoaded', () => {
             history: recentHistory, 
             mode: currentMode, 
             input_lang: appSettings.inputLang, output_lang: appSettings.outputLang, text_lang: appSettings.textLang,
-            ai_model: appSettings.model, api_key: appSettings.apiKey, file_context: fileContentBuffer, 
+            ai_model: appSettings.model, api_key: appSettings.apiKey, 
+            file_context: currentFilePayload ? currentFilePayload.data : "", // 🌟 重點防禦：從安全載體讀取
             local_url: appSettings.localUrl,
             local_model_name: appSettings.localModel,
             app_lang: appSettings.appLang
         };
-
-        fileContentBuffer = ""; dom.uploadPreview.classList.add('hidden');
 
         try {
             const response = await fetch('/api/chat', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody)
             });
 
+            if (!response.ok) throw new Error(`Server Error: ${response.status}`);
+            
             const reader = response.body.getReader();
+            // ... (下方的 const decoder = new TextDecoder... 保持原樣不動)
             const decoder = new TextDecoder("utf-8");
             let aiTextContent = "";
             let isFirstChunk = true;
@@ -1063,8 +1102,15 @@ document.addEventListener('DOMContentLoaded', () => {
             footer.className = 'msg-footer';
             const copyBtn = document.createElement('button');
             copyBtn.className = 'copy-btn slide-up'; 
-            copyBtn.setAttribute('data-i18n', 'btn_copy');
-            copyBtn.innerHTML = dict.btn_copy;
+            
+            const dictSafe = translations[appSettings.appLang || 'en'];
+            const btnCopyRaw = dictSafe ? dictSafe.btn_copy : "Copy";
+            const copyText = btnCopyRaw ? btnCopyRaw.replace(/<[^>]*>?/gm, '').trim() : "Copy";
+            
+            copyBtn.innerHTML = typeof svgCopy !== 'undefined' ? svgCopy : "📋";
+            copyBtn.setAttribute('data-tooltip', copyText);
+            if (window.bindTooltipEvents) window.bindTooltipEvents(copyBtn);
+            
             copyBtn.onclick = () => copyTextToClipboard(aiTextContent, copyBtn);
             footer.appendChild(copyBtn);
             wrapper.appendChild(footer);
@@ -1089,21 +1135,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // =======================================================
     let isTouchDevice = false; // 全域標記是否使用觸控
 
-    document.querySelectorAll('[data-tooltip], [data-i18n-tooltip]').forEach(btn => {
-        // 🌟 把計時器跟狀態放在每個 btn 內部，徹底解決互相干擾的靈異現象
+    // 將 Tooltip 邏輯封裝，方便給後續新加入的按鈕綁定
+    window.bindTooltipEvents = function(btn) {
+        if (btn.hasTooltipBound) return; // 防止重複綁定
+        btn.hasTooltipBound = true;
+        
         let pressTimer = null;
         let isLongPress = false;
 
         const startPress = (e) => {
             if (window.innerWidth > 768) return; 
-            
             if (e.type === 'touchstart') isTouchDevice = true;
             if (e.type === 'mousedown' && isTouchDevice) return;
 
             isLongPress = false;
             clearTimeout(pressTimer);
             
-            // 點擊新按鈕時，強制關閉畫面上其他可能還亮著的提示框
             document.querySelectorAll('.mobile-show-tooltip').forEach(b => {
                 if (b !== btn) b.classList.remove('mobile-show-tooltip');
             });
@@ -1111,60 +1158,43 @@ document.addEventListener('DOMContentLoaded', () => {
             pressTimer = setTimeout(() => {
                 isLongPress = true;
                 btn.classList.add('mobile-show-tooltip'); 
-                // 🚨 已根據要求移除震動功能 (navigator.vibrate)
-            }, 400); // 400 毫秒判定為長按
+            }, 400); 
         };
 
         const cancelPress = () => {
             if (window.innerWidth > 768) return;
             clearTimeout(pressTimer);
-            if (!isLongPress) {
-                btn.classList.remove('mobile-show-tooltip');
-            }
+            if (!isLongPress) btn.classList.remove('mobile-show-tooltip');
         };
 
         const endPress = (e) => {
             if (window.innerWidth > 768) return;
             clearTimeout(pressTimer);
-            
             if (isLongPress) {
-                if (e.cancelable) e.preventDefault(); // 殺死手機 click
-                
-                // 讓介紹框多停留 1.5 秒方便閱讀
-                setTimeout(() => {
-                    btn.classList.remove('mobile-show-tooltip');
-                }, 1500);
+                if (e.cancelable) e.preventDefault(); 
+                setTimeout(() => btn.classList.remove('mobile-show-tooltip'), 1500);
             } else {
-                // 如果是快點，立刻移除，絕不閃現
                 btn.classList.remove('mobile-show-tooltip');
             }
         };
 
-        // 👆 給真手機用的觸控事件 (增加 touchcancel 防護)
         btn.addEventListener('touchstart', startPress, { passive: true });
         btn.addEventListener('touchmove', cancelPress, { passive: true });
         btn.addEventListener('touchend', endPress);
         btn.addEventListener('touchcancel', cancelPress);
-
-        // 🖱️ 給你在電腦縮小視窗測試用的滑鼠事件！
         btn.addEventListener('mousedown', startPress);
         btn.addEventListener('mouseleave', cancelPress);
         btn.addEventListener('mouseup', endPress);
-
-        // 攔截系統長按選單
-        btn.addEventListener('contextmenu', (e) => {
-            if (window.innerWidth <= 768) e.preventDefault();
-        });
-
-        // 終極保險：在捕獲階段把 click 掐死
+        btn.addEventListener('contextmenu', (e) => { if (window.innerWidth <= 768) e.preventDefault(); });
         btn.addEventListener('click', (e) => {
             if (window.innerWidth <= 768 && (isLongPress || btn.classList.contains('mobile-show-tooltip'))) {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
+                e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
             }
         }, true); 
-    });
+    };
+
+    // 初始化頁面上已有的 tooltip 元素
+    document.querySelectorAll('[data-tooltip], [data-i18n-tooltip]').forEach(window.bindTooltipEvents);
 
     // ==========================================
     // 7. 其他事件綁定
@@ -1225,7 +1255,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 處理圖片上傳
+    // 🌟 全域取消附件引擎：供 X 按鈕呼叫，也供發送後瞬間清空呼叫
+    window.clearAttachment = function(e) {
+        if (e) { e.stopPropagation(); e.preventDefault(); }
+        attachedFile = null;
+        fileContentBuffer = "";
+        const upPreview = document.getElementById('upload-preview');
+        if (upPreview) { upPreview.innerHTML = ""; upPreview.classList.add('hidden'); }
+        const l2dPreview = document.getElementById('l2d-upload-preview');
+        if (l2dPreview) { l2dPreview.innerHTML = ""; l2dPreview.classList.add('hidden'); }
+    };
+
     if (imageUpload) {
         imageUpload.addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -1233,27 +1273,82 @@ document.addEventListener('DOMContentLoaded', () => {
             const reader = new FileReader();
             reader.onload = function(evt) {
                 fileContentBuffer = evt.target.result; 
-                // 🌟 新增：封裝圖片物件
                 attachedFile = { name: file.name, type: 'image', data: evt.target.result }; 
-                dom.uploadPreview.innerText = `🖼️ 已附加圖片: ${file.name}`;
-                dom.uploadPreview.classList.remove('hidden');
+                
+                // 🌟 加入右上角紅色 X 刪除按鈕
+                const thumbnailHtml = `
+                    <div style="position: relative; display: inline-block;">
+                        <img src="${evt.target.result}" style="width: 48px; height: 48px; object-fit: cover; border-radius: 8px; display: block; box-shadow: 0 4px 12px rgba(0,0,0,0.2); border: 1px solid rgba(128,128,128,0.2);">
+                        <div onclick="window.clearAttachment(event)" style="position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; background: #ff3b30; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.3); line-height: 1; padding-bottom: 2px;">×</div>
+                    </div>`;
+
+                if (currentMode === 'live2d') {
+                    const l2dPreview = document.getElementById('l2d-upload-preview');
+                    if (l2dPreview) { l2dPreview.innerHTML = thumbnailHtml; l2dPreview.classList.remove('hidden'); }
+                } else {
+                    dom.uploadPreview.innerHTML = thumbnailHtml; dom.uploadPreview.classList.remove('hidden');
+                }
             };
             reader.readAsDataURL(file); 
             e.target.value = ''; 
         });
     }
 
-    // 處理一般文字/文檔附件上傳
+    if (dom.fileUpload) {
+        dom.fileUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                fileContentBuffer = evt.target.result;
+                attachedFile = { name: file.name, type: 'file', data: evt.target.result }; 
+                
+                // 🌟 加入右上角紅色 X 刪除按鈕
+                const fileHtml = `
+                    <div style="position: relative; display: inline-block;">
+                        <div style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: rgba(128, 128, 128, 0.15); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-color);">
+                            ${typeof svgFileIcon !== 'undefined' ? svgFileIcon : '📄'}
+                        </div>
+                        <div onclick="window.clearAttachment(event)" style="position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; background: #ff3b30; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.3); line-height: 1; padding-bottom: 2px;">×</div>
+                    </div>`;
+
+                if (currentMode === 'live2d') {
+                    const l2dPreview = document.getElementById('l2d-upload-preview');
+                    if (l2dPreview) { l2dPreview.innerHTML = fileHtml; l2dPreview.classList.remove('hidden'); }
+                } else {
+                    dom.uploadPreview.innerHTML = fileHtml; dom.uploadPreview.classList.remove('hidden');
+                }
+            };
+            reader.readAsText(file); 
+            e.target.value = ''; 
+        });
+    }
+
+    // 處理一般文字/文檔附件上傳 (使用 SVG 替換 Emoji)
     dom.fileUpload.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
         reader.onload = function(evt) {
             fileContentBuffer = evt.target.result;
-            // 🌟 新增：封裝文件物件
             attachedFile = { name: file.name, type: 'file', data: evt.target.result }; 
-            dom.uploadPreview.innerText = `📄 已附加檔案: ${file.name}`;
-            dom.uploadPreview.classList.remove('hidden');
+            
+            // 🌟 採用 SVG 圖示的文件預覽
+            const fileHtml = `<div style="display:flex; align-items:center; gap:6px;">
+                ${svgFileIcon}
+                <span style="font-size:13px; font-weight:600;">已附加附件: <span style="font-weight:400; opacity:0.8; max-width:120px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-block; vertical-align:bottom;">${file.name}</span></span>
+            </div>`;
+
+            if (currentMode === 'live2d') {
+                const l2dPreview = document.getElementById('l2d-upload-preview');
+                if (l2dPreview) {
+                    l2dPreview.innerHTML = fileHtml;
+                    l2dPreview.classList.remove('hidden');
+                }
+            } else {
+                dom.uploadPreview.innerHTML = fileHtml;
+                dom.uploadPreview.classList.remove('hidden');
+            }
         };
         reader.readAsText(file); 
         e.target.value = ''; 
@@ -1885,13 +1980,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function sendLive2DMessage(text) {
-        if (!text.trim()) return;
+        if (!text.trim() && !fileContentBuffer) return; 
 
-        // 🌟 防呆攔截
         if (isProcessingRequest) return;
         isProcessingRequest = true;
         
-        // 👇 🌟 加入這三行：在使用者點擊發送的瞬間，立刻解鎖音訊引擎！
         if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
         if (audioContext.state === 'suspended') audioContext.resume();
 
@@ -1899,22 +1992,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const l2dSendBtn = document.getElementById('l2d-send-btn');
         const l2dMicBtn = document.getElementById('l2d-mic-btn');
 
-        // 👇 新增防呆：發送時鎖定所有輸入與按鈕
         l2dInput.readOnly = true;
         l2dSendBtn.disabled = true;
         l2dMicBtn.disabled = true;
 
-        // 顯示為思考狀態
-        ttsSpeaking = false;
-        live2dFullHistory.push({ role: 'user', content: text });
+        const userText = text.trim() ? text : ` `;
+
+        let currentFilePayload = null;
+        if (attachedFile) {
+            currentFilePayload = { name: attachedFile.name, type: attachedFile.type, data: attachedFile.data };
+        }
+
+        // 🌟 核心修復：提取完檔案數據後，立刻呼叫引擎瞬間洗淨畫面的預覽縮圖！
+        if (window.clearAttachment) window.clearAttachment();
+
+        live2dFullHistory.push({ role: 'user', content: userText, file: currentFilePayload ? { ...currentFilePayload } : null });
         saveL2dHistory();
         renderL2dHistory(); 
-        const bubble = document.getElementById('live2d-speech-bubble');
 
+        ttsSpeaking = false;
+        const bubble = document.getElementById('live2d-speech-bubble');
         bubble.className = `live2d-bubble mood-${live2dMood}`;
         bubble.querySelector('.bubble-text').innerHTML = '<div class="typing-indicator" style="padding: 2px 8px; justify-content: center;"><span></span><span></span><span></span></div>';
 
-        // 👇 使用專屬的 Live2D 記憶體，不使用 currentMessages
         const recentHistory = live2dMessages.slice(-5);
         const requestBody = {
             message: text,
@@ -1925,6 +2025,7 @@ document.addEventListener('DOMContentLoaded', () => {
             text_lang: appSettings.textLang,
             ai_model: appSettings.model,
             api_key: appSettings.apiKey,
+            file_context: currentFilePayload ? currentFilePayload.data : "", // 🌟 重點防禦
             local_url: appSettings.localUrl,
             local_model_name: appSettings.localModel,
             app_lang: appSettings.appLang
@@ -1937,7 +2038,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(requestBody)
             });
 
+            if (!response.ok) throw new Error(`Server Error: ${response.status}`);
+
             const reader = response.body.getReader();
+            // ... (下方的 const decoder = new TextDecoder... 保持原樣不動)
             const decoder = new TextDecoder("utf-8");
             let fullAiResponse = "";
 
@@ -2095,6 +2199,32 @@ document.addEventListener('DOMContentLoaded', () => {
     async function initLive2D() {
         if (live2dApp) return;
 
+        // 🌸 動態產生 25 片隨機櫻花粒子
+        function createSakuraPetals() {
+            const container = document.getElementById('view-live2d');
+            // 防呆：如果已經有櫻花了就不再重複生成
+            if (!container || container.querySelector('.sakura-petal')) return; 
+            
+            for (let i = 0; i < 25; i++) {
+                let petal = document.createElement('div');
+                petal.className = 'sakura-petal';
+                // 隨機生成 0~100vw 的橫向位置
+                petal.style.left = (Math.random() * 100) + 'vw';
+                // 隨機下墜時間與搖曳頻率，營造錯落有致的物理感
+                petal.style.animationDuration = (Math.random() * 5 + 6) + 's, ' + (Math.random() * 3 + 3) + 's';
+                // 隨機延遲，避免一開始全部一起掉下來
+                petal.style.animationDelay = (Math.random() * 10) + 's, ' + (Math.random() * 5) + 's';
+                // 隨機大小 (6px ~ 12px)
+                let size = Math.random() * 6 + 6;
+                petal.style.width = size + 'px';
+                petal.style.height = size + 'px';
+                
+                // 插入到容器內 (確保放在 live2d-stage-container 之前，保持在背景)
+                container.insertBefore(petal, document.getElementById('live2d-stage-container'));
+            }
+        }
+        createSakuraPetals(); // 啟動櫻花引擎！
+
         const canvas = document.getElementById('live2d-canvas');
         const stageContainer = document.getElementById('live2d-stage-container');
         const bubble = document.getElementById('live2d-speech-bubble');
@@ -2163,57 +2293,128 @@ document.addEventListener('DOMContentLoaded', () => {
             if (loadingOverlay) loadingOverlay.classList.add('hidden');
         }
     }
+    // =======================================================
+    // 🖊️ 升級版：單一開關控制島 (關閉校對自動切回直發模式)
+    // =======================================================
     function setupLive2DControls() {
         const dict = translations[appSettings.appLang || 'en'];
-        const btnAuto = document.getElementById('btn-l2d-mode-auto');
         const btnVerify = document.getElementById('btn-l2d-mode-verify');
         const l2dInput = document.getElementById('l2d-chat-input');
         const l2dSendBtn = document.getElementById('l2d-send-btn');
         const l2dMicBtn = document.getElementById('l2d-mic-btn');
-        l2dMicBtn.innerHTML = svgMic;
+        const dashboard = document.querySelector('.live2d-dashboard');
+        
+        if (l2dMicBtn) l2dMicBtn.innerHTML = svgMic;
 
-        l2dInput.readOnly = (l2dInputMode === 'auto');
+        // =======================================================
+        // 🌟 核心動態注入：在畫筆左側現場鑄造「上傳功能套件」
+        // =======================================================
+        if (dashboard && btnVerify && !document.getElementById('l2d-upload-container')) {
+            // 1. 建立總外殼容器
+            const uploadContainer = document.createElement('div');
+            uploadContainer.id = 'l2d-upload-container';
+            uploadContainer.className = 'l2d-upload-container';
 
-        // 👇 把它移到這裡來！綁定 Enter 鍵監聽
-        l2dInput.onkeydown = (e) => {
-            if (e.isComposing || e.keyCode === 229) return; // 防中文選字干擾
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                if (l2dInputMode === 'verify' && !l2dSendBtn.classList.contains('hidden')) {
-                    sendLive2DMessage(l2dInput.value);
+            // 2. 建立主觸發按鈕 (採用與普通模式相同的 icon-btn 質感與 + 號)
+            const toggleBtn = document.createElement('button');
+            toggleBtn.id = 'btn-l2d-upload-toggle';
+            toggleBtn.className = 'icon-btn';
+            toggleBtn.style.width = '38px'; toggleBtn.style.height = '38px';
+            toggleBtn.style.fontSize = '22px'; toggleBtn.style.lineHeight = '38px';
+            toggleBtn.innerHTML = '＋';
+
+            // 3. 建立上拉彈出功能選單 (結構與普通模式 100% 複製)
+            const popup = document.createElement('div');
+            popup.id = 'l2d-upload-popup';
+            popup.className = 'upload-popup hidden';
+
+            const optImg = document.createElement('button');
+            optImg.className = 'upload-option';
+            optImg.innerHTML = `<span class="upload-icon">${typeof svgImageIcon !== 'undefined' ? svgImageIcon : '🖼️'}</span><span data-i18n="upload_image">${dict.upload_image}</span>`;
+            optImg.onclick = () => { imageUpload.click(); popup.classList.add('hidden'); };
+
+            const optFile = document.createElement('button');
+            optFile.className = 'upload-option';
+            optFile.innerHTML = `<span class="upload-icon">${typeof svgFileIcon !== 'undefined' ? svgFileIcon : '📄'}</span><span data-i18n="upload_file">${dict.upload_file}</span>`;
+            optFile.onclick = () => { dom.fileUpload.click(); popup.classList.add('hidden'); };
+
+            popup.appendChild(optImg);
+            popup.appendChild(optFile);
+
+            // 4. 建立浮動附加預覽框
+            const preview = document.createElement('div');
+            preview.id = 'l2d-upload-preview';
+            preview.className = 'hidden';
+
+            // 組裝並精準插入到畫筆按鈕的左邊
+            uploadContainer.appendChild(toggleBtn);
+            uploadContainer.appendChild(popup);
+            uploadContainer.appendChild(preview);
+            dashboard.insertBefore(uploadContainer, btnVerify.parentNode);
+
+            // 5. 綁定彈出選單事件
+            toggleBtn.onclick = (e) => {
+                e.stopPropagation();
+                popup.classList.toggle('hidden');
+            };
+            document.addEventListener('click', (e) => {
+                if (!toggleBtn.contains(e.target) && !popup.contains(e.target)) {
+                    popup.classList.add('hidden');
                 }
+            });
+        }
+
+        // 🌟 畫筆（校對模式）雙向開關舊邏輯完美保留
+        if (btnVerify) {
+            btnVerify.innerHTML = svgPen;
+            btnVerify.setAttribute('data-i18n-tooltip', 'tooltip_l2d_verify');
+            btnVerify.setAttribute('data-tooltip', dict.tooltip_l2d_verify);
+            window.bindTooltipEvents(btnVerify);
+
+            if (l2dInputMode === 'verify') {
+                btnVerify.classList.add('active');
+                l2dInput.readOnly = false;
+                l2dInput.placeholder = dict.l2d_placeholder_verify;
+                if (l2dSendBtn) l2dSendBtn.classList.remove('hidden');
+            } else {
+                btnVerify.classList.remove('active');
+                l2dInput.readOnly = true;
+                l2dInput.placeholder = dict.l2d_placeholder_auto;
+                if (l2dSendBtn) l2dSendBtn.classList.add('hidden');
             }
-        };
 
-        // 切換為直發模式
-        btnAuto.onclick = () => {
-            l2dInputMode = 'auto';
-            btnAuto.classList.add('active');
-            btnVerify.classList.remove('active');
-            l2dInput.readOnly = true;
-            l2dInput.placeholder = dict.l2d_placeholder_auto;
-            l2dSendBtn.classList.add('hidden');
-        };
+            btnVerify.onclick = () => {
+                if (l2dInputMode === 'auto') {
+                    l2dInputMode = 'verify';
+                    btnVerify.classList.add('active');
+                    l2dInput.readOnly = false;
+                    l2dInput.placeholder = dict.l2d_placeholder_verify;
+                    if (l2dSendBtn) l2dSendBtn.classList.remove('hidden');
+                } else {
+                    l2dInputMode = 'auto';
+                    btnVerify.classList.remove('active');
+                    l2dInput.readOnly = true;
+                    l2dInput.placeholder = dict.l2d_placeholder_auto;
+                    if (l2dSendBtn) l2dSendBtn.classList.add('hidden');
+                }
+            };
+        }
 
-        // 切換為校對模式
-        btnVerify.onclick = () => {
-            l2dInputMode = 'verify';
-            btnVerify.classList.add('active');
-            btnAuto.classList.remove('active');
-            l2dInput.readOnly = false;
-            l2dInput.placeholder = dict.l2d_placeholder_verify;
-            l2dSendBtn.classList.remove('hidden');
-        };
+        if (l2dInput) {
+            l2dInput.onkeydown = (e) => {
+                if (e.isComposing || e.keyCode === 229) return; 
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (l2dInputMode === 'verify' && l2dSendBtn && !l2dSendBtn.classList.contains('hidden')) {
+                        sendLive2DMessage(l2dInput.value);
+                    }
+                }
+            };
+        }
 
-        // 點擊麥克風按鈕
-        l2dMicBtn.onclick = () => { toggleL2dSpeech(); };
-
-        // 校對模式下的點擊發送按鈕
-        l2dSendBtn.onclick = () => {
-            sendLive2DMessage(l2dInput.value);
-        };
-
-        l2dInput.placeholder = l2dInputMode === 'auto' ? dict.l2d_placeholder_auto : dict.l2d_placeholder_verify;
+        if (l2dMicBtn) l2dMicBtn.onclick = () => { toggleL2dSpeech(); };
+        if (l2dSendBtn) l2dSendBtn.onclick = () => { sendLive2DMessage(l2dInput.value); };
+        if (l2dInput) l2dInput.placeholder = l2dInputMode === 'auto' ? dict.l2d_placeholder_auto : dict.l2d_placeholder_verify;
     }
 
     // =======================================================
@@ -2224,7 +2425,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeL2dHistory = document.getElementById('close-l2d-history');
 
     function saveL2dHistory() {
-        localStorage.setItem('hkiit_l2d_history', JSON.stringify(live2dFullHistory));
+        // 👇 🌟 核心修復：為 Live2D 歷史紀錄加上 localStorage 容量防爆護盾！
+        try {
+            localStorage.setItem('hkiit_l2d_history', JSON.stringify(live2dFullHistory));
+        } catch (e) {
+            console.warn("Live2D 紀錄快取已滿，啟動 Base64 降維壓縮...");
+            // 若空間爆滿，僅清除過往對話中沉重的圖片 base64 字串，保留檔名標籤，確保網站絕不崩潰
+            live2dFullHistory.forEach(msg => {
+                if (msg.file && msg.file.type === 'image') msg.file.data = "";
+            });
+            try {
+                localStorage.setItem('hkiit_l2d_history', JSON.stringify(live2dFullHistory));
+            } catch (err) {}
+        }
     }
 
     function renderL2dHistory() {
@@ -2238,35 +2451,80 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const roleEl = document.createElement('div');
             roleEl.className = 'l2d-log-role';
-            
-            // 判斷語言
             let youStr = appSettings.appLang === 'en' ? '丨You' : '你';
             roleEl.innerText = msg.role === 'user' ? youStr : 'Hiyori';
             
             const textEl = document.createElement('div');
             textEl.className = 'l2d-log-text';
             
-            // 🌟 核心修復：精準提取 [TEXT] 內容，徹底拋棄 [VOICE] 內容
             let cleanText = msg.content;
             const textRegex = /\[\s*TEXT\s*\]([\s\S]*?)(?:\[\s*\/\s*TEXT\s*\]|$)/i;
             const voiceRegex = /\[\s*VOICE\s*\]([\s\S]*?)(?:\[\s*\/\s*VOICE\s*\]|$)/i;
 
             if (textRegex.test(cleanText)) {
-                // 如果有 [TEXT] 標籤，只抓取裡面的內容
                 cleanText = cleanText.match(textRegex)[1].trim();
             } else {
-                // 備用防呆：如果 AI 忘記寫 [TEXT]，至少把 [VOICE] 的區塊整坨挖掉
-                if (voiceRegex.test(cleanText)) {
-                    cleanText = cleanText.replace(voiceRegex, '');
-                }
-                // 清理殘留的純標籤
-                cleanText = cleanText.replace(/\[\s*\/?\s*(VOICE|TEXT)\s*\]/gi, '').trim();
+                if (voiceRegex.test(cleanText)) cleanText = cleanText.replace(voiceRegex, '');
+                cleanText = cleanText.replace(/\\[\\s*\\/?\\s*(VOICE|TEXT)\\s*\\]/gi, '').trim();
             }
             
             textEl.innerText = cleanText;
-            
             item.appendChild(roleEl);
             item.appendChild(textEl);
+
+            // =======================================================
+            // 🌟 核心新增：在 Live2D 聊天紀錄中優雅還原使用者上傳的檔案
+            // =======================================================
+            if (msg.file) {
+                if (msg.file.type === 'image' && msg.file.data) {
+                    const imgEl = document.createElement('img');
+                    imgEl.src = msg.file.data;
+                    imgEl.style.maxWidth = '100px';
+                    imgEl.style.maxHeight = '100px';
+                    imgEl.style.borderRadius = '8px';
+                    imgEl.style.display = 'block';
+                    imgEl.style.marginTop = '8px';
+                    imgEl.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
+                    imgEl.style.cursor = 'pointer';
+                    imgEl.style.pointerEvents = 'auto'; // 活化點擊
+
+                    // 完美對接雙軌 Lightbox 圖片懸浮放大鏡
+                    imgEl.onclick = (e) => {
+                        e.stopPropagation();
+                        let lightbox = document.getElementById('hkiit-image-lightbox');
+                        if (!lightbox) {
+                            lightbox = document.createElement('div');
+                            lightbox.id = 'hkiit-image-lightbox';
+                            lightbox.className = 'image-lightbox-overlay';
+                            const closeBtn = document.createElement('div');
+                            closeBtn.className = 'image-lightbox-close';
+                            closeBtn.innerHTML = '×';
+                            const img = document.createElement('img');
+                            img.className = 'image-lightbox-content';
+                            lightbox.appendChild(closeBtn);
+                            lightbox.appendChild(img);
+                            document.body.appendChild(lightbox);
+                            lightbox.onclick = () => lightbox.classList.remove('active');
+                        }
+                        const lightboxImg = lightbox.querySelector('.image-lightbox-content');
+                        lightboxImg.src = msg.file.data;
+                        requestAnimationFrame(() => lightbox.classList.add('active'));
+                    };
+                    item.appendChild(imgEl);
+                } else if (msg.file.type === 'file') {
+                    // 文件附件樣式還原
+                    const fileBox = document.createElement('div');
+                    fileBox.style.display = 'flex'; fileBox.style.alignItems = 'center'; fileBox.style.gap = '6px';
+                    fileBox.style.padding = '4px 10px'; fileBox.style.marginTop = '6px';
+                    fileBox.style.background = 'rgba(128, 128, 128, 0.1)';
+                    fileBox.style.border = '1px solid var(--border-color)';
+                    fileBox.style.borderRadius = '8px'; fileBox.style.fontSize = '12px';
+                    fileBox.style.width = 'max-content'; fileBox.style.maxWidth = '100%';
+                    fileBox.innerHTML = `📄 <span style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${msg.file.name}</span>`;
+                    item.appendChild(fileBox);
+                }
+            }
+            
             contentBox.appendChild(item);
         });
 
@@ -2286,4 +2544,59 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         // (這裡原本的 closeL2dHistory.onclick 已經整段刪除)
     }
+    // ==========================================
+    // 🌟 終極安全版：全域拖曳上傳引擎 (Drag & Drop)
+    // ==========================================
+    // 同時監聽普通模式的輸入框與 Live2D 的輸入膠囊
+    const dropZones = [
+        document.querySelector('.input-box'), 
+        document.querySelector('.l2d-input-bar')
+    ];
+
+    dropZones.forEach(zone => {
+        if (!zone) return;
+
+        // 1. 當檔案拖入區域上方時：啟動 CSS 發光特效
+        zone.addEventListener('dragover', (e) => {
+            e.preventDefault(); // 必須阻止預設行為，否則無法觸發 drop
+            e.stopPropagation();
+            zone.classList.add('drag-over');
+        });
+
+        // 2. 當檔案離開區域時：移除特效
+        zone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            zone.classList.remove('drag-over');
+        });
+
+        // 3. 當用戶鬆開滑鼠將檔案丟入時：
+        zone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            zone.classList.remove('drag-over'); // 關閉發光特效
+
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                const file = e.dataTransfer.files[0];
+                
+                // 創造一個虛擬的檔案傳輸載體
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+
+                // 🌟 核心黑魔法：智慧判斷檔案類型，然後把檔案「塞進」原本隱藏的上傳按鈕中，
+                // 並用 dispatchEvent 假裝用戶點擊了它！這樣原本所有的防呆防爆邏輯都會自動執行！
+                if (file.type.startsWith('image/')) {
+                    if (imageUpload) {
+                        imageUpload.files = dataTransfer.files;
+                        imageUpload.dispatchEvent(new Event('change'));
+                    }
+                } else {
+                    if (dom.fileUpload) {
+                        dom.fileUpload.files = dataTransfer.files;
+                        dom.fileUpload.dispatchEvent(new Event('change'));
+                    }
+                }
+            }
+        });
+    });
 }); // <--- 注意這裡保留了腳本結尾的右括號
