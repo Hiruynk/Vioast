@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentMode = 'chat'; 
     let live2dApp = null; 
     let fileContentBuffer = ""; 
+    let attachedFile = null; // 🌟 新增：用來記錄當前準備發送的檔案元數據 (名稱、類型與數據)
 
     let live2dFullHistory = JSON.parse(localStorage.getItem('hkiit_l2d_history')) || [];
 
@@ -655,13 +656,24 @@ document.addEventListener('DOMContentLoaded', () => {
             chatSessions.unshift(sessionData);
         }
         
-        // 【新增】：限制最多只保留 5 筆歷史對話，超過則刪除最舊的 (陣列尾端)
-        if (chatSessions.length > 10) {
-            chatSessions.pop(); 
-        }
+        if (chatSessions.length > 10) { chatSessions.pop(); }
 
-        localStorage.setItem('hkiit_chat_sessions', JSON.stringify(chatSessions));
-        renderSidebar();
+        try {
+            localStorage.setItem('hkiit_chat_sessions', JSON.stringify(chatSessions));
+            renderSidebar();
+        } catch (e) {
+            console.warn("⚠️ 快取空間有限，正在為歷史紀錄進行大圖 Base64 降維壓縮...");
+            // 🌟 空間防護鎖：若空間爆滿，僅清除過往對話中沉重的圖片 base64 字串，保留檔名標籤，確保網站絕不崩潰！
+            chatSessions.forEach(s => {
+                s.messages.forEach(m => {
+                    if (m.file && m.file.type === 'image') m.file.data = ""; 
+                });
+            });
+            try {
+                localStorage.setItem('hkiit_chat_sessions', JSON.stringify(chatSessions));
+                renderSidebar();
+            } catch (err) {}
+        }
     }
 
     function renderSidebar() {
@@ -682,10 +694,10 @@ document.addEventListener('DOMContentLoaded', () => {
         currentMessages = session.messages;
         dom.chatHistory.innerHTML = ''; 
         
-        // 修正 1：每次切換歷史對話時，確保首句歡迎詞優先被渲染
         displayWelcomeMessage(false); 
         
-        currentMessages.forEach(msg => appendMessageUI(msg.content, msg.role, false));
+        // 🌟 核心修改：載入歷史對話時，同步將攜帶的檔案還原到畫面上！
+        currentMessages.forEach(msg => appendMessageUI(msg.content, msg.role, false, msg.file)); 
         
         renderSidebar();
         closeSidebarHandler();
@@ -772,7 +784,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function appendMessageUI(rawText, role, animate = true) {
+    function appendMessageUI(rawText, role, animate = true, fileObj = null) {
         const dict = translations[appSettings.appLang || 'en']; // 🛑 核心修復點：防止腳本崩潰
         if (!rawText) return;
         const div = document.createElement('div');
@@ -800,6 +812,47 @@ document.addEventListener('DOMContentLoaded', () => {
         
         content.innerHTML = role === 'user' ? rawText.replace(/\n/g, '<br>') : marked.parse(cleanText);
         content.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+
+        // =======================================================
+        // 🌟 核心新增：如果訊息內包含檔案物件，將其優雅地渲染在文字最上方
+        // =======================================================
+        if (fileObj) {
+            if (fileObj.type === 'image') {
+                if (fileObj.data) {
+                    const imgEl = document.createElement('img');
+                    imgEl.src = fileObj.data;
+                    imgEl.style.maxWidth = '180px';
+                    imgEl.style.maxHeight = '180px';
+                    imgEl.style.borderRadius = '12px';
+                    imgEl.style.display = 'block';
+                    imgEl.style.marginBottom = '8px';
+                    imgEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                    imgEl.style.cursor = 'pointer';
+                    // 點擊可以放大全螢幕檢視圖片
+                    imgEl.onclick = () => {
+                        const win = window.open();
+                        win.document.write(`<iframe src="${fileObj.data}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                    };
+                    content.insertBefore(imgEl, content.firstChild);
+                } else {
+                    // 快取空間飽和降維後的優雅小標籤
+                    const imgFallback = document.createElement('div');
+                    imgFallback.style.fontSize = '13px'; imgFallback.style.opacity = '0.7'; imgFallback.style.marginBottom = '6px';
+                    imgFallback.innerText = `🖼️ 圖片: ${fileObj.name} (已成功上傳)`;
+                    content.insertBefore(imgFallback, content.firstChild);
+                }
+            } else if (fileObj.type === 'file') {
+                const fileBox = document.createElement('div');
+                fileBox.style.display = 'flex'; fileBox.style.alignItems = 'center'; fileBox.style.gap = '6px';
+                fileBox.style.padding = '6px 12px'; 
+                // 根據使用者或 AI 自動變更適配底色
+                fileBox.style.background = role === 'user' ? 'rgba(0, 0, 0, 0.06)' : 'rgba(128, 128, 128, 0.1)';
+                fileBox.style.borderRadius = '10px'; fileBox.style.marginBottom = '8px'; fileBox.style.fontSize = '13px';
+                fileBox.style.width = 'max-content'; fileBox.style.maxWidth = '100%';
+                fileBox.innerHTML = `📄 <span style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${fileObj.name}</span>`;
+                content.insertBefore(fileBox, content.firstChild);
+            }
+        }
 
         const footer = document.createElement('div');
         footer.className = 'msg-footer';
@@ -849,10 +902,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // ... (大約在 sendMessage 函數的前幾行)
         const userText = text.trim() ? text : `[傳送了參考檔案]`;
-        currentMessages.push({role: 'user', content: userText});
-        saveSession();
-        appendMessageUI(userText, 'user');
         
+        // 🌟 新增：在清空緩存前，先提取出當前的附加檔案 payload
+        let currentFilePayload = null;
+        if (attachedFile) {
+            currentFilePayload = { name: attachedFile.name, type: attachedFile.type, data: attachedFile.data };
+        }
+
+        let msgObj = { role: 'user', content: userText };
+        if (currentFilePayload) {
+            msgObj.file = currentFilePayload; // 🌟 將檔案合併進對話歷史紀錄
+        }
+        currentMessages.push(msgObj);
+        saveSession();
+        
+        // 🌟 核心修改：將檔案 payload 作為第四個參數，傳給 UI 渲染器
+        appendMessageUI(userText, 'user', true, currentFilePayload); 
+        
+        attachedFile = null; // 🌟 功成身退，立刻重置暫存器
         dom.chatInput.value = '';
         dom.chatInput.style.height = 'auto'; // 【新增】：發送後強制將高度重置為初始狀態
 
@@ -1135,6 +1202,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const reader = new FileReader();
             reader.onload = function(evt) {
                 fileContentBuffer = evt.target.result; 
+                // 🌟 新增：封裝圖片物件
+                attachedFile = { name: file.name, type: 'image', data: evt.target.result }; 
                 dom.uploadPreview.innerText = `🖼️ 已附加圖片: ${file.name}`;
                 dom.uploadPreview.classList.remove('hidden');
             };
@@ -1150,6 +1219,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const reader = new FileReader();
         reader.onload = function(evt) {
             fileContentBuffer = evt.target.result;
+            // 🌟 新增：封裝文件物件
+            attachedFile = { name: file.name, type: 'file', data: evt.target.result }; 
             dom.uploadPreview.innerText = `📄 已附加檔案: ${file.name}`;
             dom.uploadPreview.classList.remove('hidden');
         };

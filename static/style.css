@@ -965,3 +965,36 @@ body, html {
         top: 70px; right: 15px; /* 手機版按鈕位置微調 */
     }
 }
+
+/* ==========================================
+   🌟 Live2D 控制按鈕「點擊放大與彈性回饋」特效
+========================================== */
+/* 1. 綁定過場動畫：讓這三個按鈕擁有極致絲滑的變形能力 */
+#btn-l2d-history,
+#l2d-send-btn,
+#l2d-mic-btn {
+    /* 使用 cubic-bezier 創造類似果凍/彈簧的 Q 彈物理視覺感 */
+    transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s, opacity 0.2s !important;
+    will-change: transform; /* 預先啟用 GPU 加速，確保手機上點擊絕對不卡頓 */
+}
+
+/* 2. 電腦端專屬：滑鼠懸停時微微上浮，提示可以點擊 */
+@media (hover: hover) {
+    #btn-l2d-history:hover,
+    #l2d-send-btn:hover,
+    #l2d-mic-btn:hover {
+        transform: translateY(-2px);
+    }
+}
+
+/* 3. 📱 終極回饋感：手指或滑鼠「按下去」的瞬間，立刻放大 15%！ */
+#btn-l2d-history:active,
+#l2d-send-btn:active,
+#l2d-mic-btn:active {
+    transform: scale(1.15) !important;
+}
+
+/* 針對麥克風錄音狀態的額外保護：錄音中按鈕通常有自己的動畫，按下去依然保留放大感 */
+#l2d-mic-btn.recording:active {
+    transform: scale(1.15) !important;
+}

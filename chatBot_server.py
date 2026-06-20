@@ -361,6 +361,29 @@ async def chat_endpoint(req: ChatRequest):
     
     target_collection = vector_collections.get('eng') if is_english else vector_collections.get('chi')
 
+    # 👇 🌟 新增：攔截 Base64 圖片並轉換為 AI 專用多模態格式
+    import base64
+    image_part_gemini = None
+    image_base64_ollama = None
+
+    if req.file_context and req.file_context.startswith("data:image/"):
+        try:
+            # 分離標頭 (data:image/jpeg;base64) 與實際編碼
+            header, encoded = req.file_context.split(",", 1)
+            mime_type = header.split(";")[0].split(":")[1]
+            
+            # 給 Gemini 用的原生圖片格式 (Bytes)
+            image_bytes = base64.b64decode(encoded)
+            image_part_gemini = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+            
+            # 給 Ollama 用的 base64 格式
+            image_base64_ollama = encoded
+            
+            # 🚨 致命修復：清空 file_context，阻止這串亂碼被塞入純文字提示詞中！
+            req.file_context = "" 
+        except Exception as e:
+            print(f"圖片解析失敗: {e}")
+
     if not user_query and req.file_context:
         user_query = "Please analyze and summarize the uploaded file." if is_english else "請幫我分析並總結這份上傳的檔案內容。"
         search_query = "Open Day" if is_english else "開放日" 
@@ -502,7 +525,11 @@ async def chat_endpoint(req: ChatRequest):
                 for msg in recent_history:
                     ollama_role = "assistant" if msg.get("role") == "ai" else "user"
                     ollama_messages.append({"role": ollama_role, "content": msg.get("content", "")})
-                ollama_messages.append({"role": "user", "content": user_query})
+                # 👇 🌟 核心修復：如果存在圖片，將圖片加入 Ollama 的 images 陣列
+                user_msg_dict = {"role": "user", "content": user_query}
+                if image_base64_ollama:
+                    user_msg_dict["images"] = [image_base64_ollama]
+                ollama_messages.append(user_msg_dict)
 
                 # 🌟 改為指向我們剛剛寫好的 5070 Ti 腳本的 /api/chat 路由
                 target_url = f"{req.local_url.rstrip('/')}/api/chat"
@@ -551,17 +578,20 @@ async def chat_endpoint(req: ChatRequest):
                 q_title = "Current Question" if is_english else "當前問題"
                 full_query_for_gemini = f"{history_text}\n# 【{q_title}】\n{user_query}" if history_text else user_query
 
+                # 👇 🌟 核心修復：如果存在圖片，將圖片物件與文字打包成多模態陣列發送
+                contents_to_send = [image_part_gemini, full_query_for_gemini] if image_part_gemini else full_query_for_gemini
+
                 client = genai.Client(api_key=req.api_key)
                 config = types.GenerateContentConfig(
                     system_instruction=system_instruction_str, 
-                    tools=[{"google_search": {}}], # 修復為最穩定的 Google Search 啟用格式
+                    tools=[{"google_search": {}}], 
                     max_output_tokens=1024,  
                     temperature=0.5         
                 )
                 
                 response_stream = client.models.generate_content_stream(
                     model='gemini-3.1-flash-lite',
-                    contents=full_query_for_gemini,
+                    contents=contents_to_send, # 👈 這裡換成新的 contents_to_send 變數
                     config=config
                 )
                 
