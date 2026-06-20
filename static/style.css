@@ -1010,3 +1010,82 @@ body, html {
     /* 稍微拉開一點點圓點的間距，讓密碼框看起來更有質感 */
     letter-spacing: 3px; 
 }
+
+/* ==========================================
+   🖼️ 圖片放大懸浮窗 (Lightbox Modal) 特效
+========================================== */
+.image-lightbox-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.85); /* 深色半透明背景 */
+    backdrop-filter: blur(5px); /* 毛玻璃模糊特效 */
+    z-index: 9999; /* 確保蓋過所有視窗與導航列 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+/* 啟動狀態 */
+.image-lightbox-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* 內部放大的圖片 */
+.image-lightbox-content {
+    max-width: 90%;
+    max-height: 90%;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    transform: scale(0.9); /* 預設稍微縮小 */
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 帶有 Q 彈感的貝茲曲線 */
+    user-select: none;
+}
+
+/* 啟動時的圖片彈跳放大 */
+.image-lightbox-overlay.active .image-lightbox-content {
+    transform: scale(1);
+}
+
+/* 右上角關閉按鈕 (完美置中 + 最高圖層修正版) */
+.image-lightbox-close {
+    position: absolute;
+    top: 20px;
+    right: 25px;
+    
+    /* 🌟 關鍵修復：賦予容器內絕對最高圖層，保證死死壓在圖片上方！ */
+    z-index: 999; 
+    
+    color: white;
+    font-size: 32px;
+    font-weight: 300;
+    cursor: pointer;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    line-height: 1;
+    padding-bottom: 2px; 
+    box-sizing: border-box; 
+    
+    /* 稍微加深一點背景顏色，避免圖片太白時按鈕看不清楚 */
+    background: rgba(0, 0, 0, 0.35); 
+    border-radius: 50%;
+    
+    /* 加上一點陰影，讓按鈕更有立體感和層次感 */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    
+    transition: background 0.2s, transform 0.2s;
+}
+
+.image-lightbox-close:hover {
+    background: rgba(0, 0, 0, 0.6);
+    transform: scale(1.1);
+}

@@ -829,9 +829,40 @@ document.addEventListener('DOMContentLoaded', () => {
                     imgEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
                     imgEl.style.cursor = 'pointer';
                     // 點擊可以放大全螢幕檢視圖片
+                    // 🌟 點擊觸發 Gemini 風格的懸浮圖片放大鏡 (Lightbox)
                     imgEl.onclick = () => {
-                        const win = window.open();
-                        win.document.write(`<iframe src="${fileObj.data}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                        // 檢查畫面中是否已經有放大鏡容器，沒有就現場造一個
+                        let lightbox = document.getElementById('hkiit-image-lightbox');
+                        if (!lightbox) {
+                            lightbox = document.createElement('div');
+                            lightbox.id = 'hkiit-image-lightbox';
+                            lightbox.className = 'image-lightbox-overlay';
+                            
+                            const closeBtn = document.createElement('div');
+                            closeBtn.className = 'image-lightbox-close';
+                            closeBtn.innerHTML = '×';
+                            
+                            const img = document.createElement('img');
+                            img.className = 'image-lightbox-content';
+                            
+                            lightbox.appendChild(closeBtn);
+                            lightbox.appendChild(img);
+                            document.body.appendChild(lightbox);
+                            
+                            // 點擊背景或關閉按鈕時，收起放大鏡
+                            lightbox.onclick = () => {
+                                lightbox.classList.remove('active');
+                            };
+                        }
+                        
+                        // 將當前點擊的圖片數據塞入放大鏡中
+                        const lightboxImg = lightbox.querySelector('.image-lightbox-content');
+                        lightboxImg.src = fileObj.data;
+                        
+                        // 防止點擊事件冒泡，並呼叫瀏覽器在下一幀渲染動畫
+                        requestAnimationFrame(() => {
+                            lightbox.classList.add('active');
+                        });
                     };
                     content.insertBefore(imgEl, content.firstChild);
                 } else {
