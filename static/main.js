@@ -1078,6 +1078,10 @@ document.addEventListener('DOMContentLoaded', () => {
             let aiTextContent = "";
             let isFirstChunk = true;
 
+            // 👇 🌟 1. 新增：用來控制畫面 60fps 刷新頻率的渲染鎖
+            let isRendering = false;
+            let pendingCleanText = "";
+
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
@@ -1122,12 +1126,30 @@ document.addEventListener('DOMContentLoaded', () => {
                                 liveCleanText = "💭 思考中...";
                             }
                             
-                            if (currentMode === 'chat') {
-                                if (isFirstChunk) { content.innerHTML = ""; isFirstChunk = false; }
-                                content.innerHTML = marked.parse(liveCleanText);
-                                smoothScrollToBottom(); 
-                            } else {
-                                dom.live2dSubtitle.innerText = liveCleanText;
+                            // =======================================================
+                            // 🌟 2. 核心修復：導入 60fps 節流與無動畫瞬間置底
+                            // =======================================================
+                            pendingCleanText = liveCleanText;
+                            
+                            if (!isRendering) {
+                                isRendering = true;
+                                // 使用瀏覽器原生的渲染幀動畫，強迫 DOM 更新配合螢幕刷新率
+                                requestAnimationFrame(() => {
+                                    if (currentMode === 'chat') {
+                                        if (isFirstChunk) { content.innerHTML = ""; isFirstChunk = false; }
+                                        
+                                        // 渲染 Markdown
+                                        content.innerHTML = marked.parse(pendingCleanText);
+                                        
+                                        // 🚨 致命卡頓殺手修復：串流時「絕對不能」用 smooth 動畫，改用瞬間置底死死咬住文字！
+                                        dom.chatHistory.scrollTop = dom.chatHistory.scrollHeight; 
+                                    } else {
+                                        dom.live2dSubtitle.innerText = pendingCleanText;
+                                    }
+                                    
+                                    // 渲染完畢，解開鎖定等待下一個幀
+                                    isRendering = false;
+                                });
                             }
                         } catch (e) {}
                     }
@@ -1228,9 +1250,13 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('contextmenu', (e) => { if (window.innerWidth <= 768) e.preventDefault(); });
         btn.addEventListener('click', (e) => {
             if (window.innerWidth <= 768 && (isLongPress || btn.classList.contains('mobile-show-tooltip'))) {
+                // 👇 🌟 核心修復：加入豁免名單！這三個關鍵按鈕的點擊事件絕對不能被殺死！
+                if (btn.id === 'l2d-mic-btn' || btn.id === 'l2d-send-btn' || btn.id === 'chat-send') {
+                    return; 
+                }
                 e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
             }
-        }, true); 
+        }, true);
     };
 
     // 初始化頁面上已有的 tooltip 元素
