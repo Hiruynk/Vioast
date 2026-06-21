@@ -2446,20 +2446,28 @@ document.addEventListener('DOMContentLoaded', () => {
         // 🌟 畫筆（校對模式）雙向開關舊邏輯完美保留
         if (btnVerify) {
             btnVerify.innerHTML = svgPen;
-            btnVerify.setAttribute('data-i18n-tooltip', 'tooltip_l2d_verify');
-            btnVerify.setAttribute('data-tooltip', dict.tooltip_l2d_verify);
+            // 🚨 移除原本寫死的 setAttribute，交由下方初始化邏輯動態判斷
             window.bindTooltipEvents(btnVerify);
 
+            // 初始化判斷
             if (l2dInputMode === 'verify') {
                 btnVerify.classList.add('active');
                 l2dInput.readOnly = false;
                 l2dInput.placeholder = dict.l2d_placeholder_verify;
                 if (l2dSendBtn) l2dSendBtn.classList.remove('hidden');
+                
+                // 🌟 初始化為校對模式介紹框
+                btnVerify.setAttribute('data-i18n-tooltip', 'tooltip_l2d_verify');
+                btnVerify.setAttribute('data-tooltip', dict.tooltip_l2d_verify);
             } else {
                 btnVerify.classList.remove('active');
                 l2dInput.readOnly = true;
                 l2dInput.placeholder = dict.l2d_placeholder_auto;
                 if (l2dSendBtn) l2dSendBtn.classList.add('hidden');
+                
+                // 🌟 初始化為直發模式介紹框
+                btnVerify.setAttribute('data-i18n-tooltip', 'tooltip_l2d_auto');
+                btnVerify.setAttribute('data-tooltip', dict.tooltip_l2d_auto);
             }
 
             btnVerify.onclick = () => {
@@ -2469,12 +2477,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     l2dInput.readOnly = false;
                     l2dInput.placeholder = dict.l2d_placeholder_verify;
                     if (l2dSendBtn) l2dSendBtn.classList.remove('hidden');
+                    
+                    // 🌟 切換時動態更新為：校對模式
+                    btnVerify.setAttribute('data-i18n-tooltip', 'tooltip_l2d_verify');
+                    btnVerify.setAttribute('data-tooltip', dict.tooltip_l2d_verify);
                 } else {
                     l2dInputMode = 'auto';
                     btnVerify.classList.remove('active');
                     l2dInput.readOnly = true;
                     l2dInput.placeholder = dict.l2d_placeholder_auto;
                     if (l2dSendBtn) l2dSendBtn.classList.add('hidden');
+                    
+                    // 🌟 切換時動態更新為：直發模式
+                    btnVerify.setAttribute('data-i18n-tooltip', 'tooltip_l2d_auto');
+                    btnVerify.setAttribute('data-tooltip', dict.tooltip_l2d_auto);
                 }
             };
         }

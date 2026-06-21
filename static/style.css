@@ -661,10 +661,7 @@ body, html {
     
     cursor: pointer; transition: all 0.2s ease;
     display: flex; align-items: center; justify-content: center;
-    opacity: 0.5; padding: 0;
-    
-    /* 🌟 加入防爆護盾：保證任何意外內容都絕對不會超出這個 38px 的圓形 */
-    overflow: hidden; 
+    opacity: 0.5; padding: 0; 
 }
 .l2d-mode-btn:hover { background: rgba(128,128,128,0.1); opacity: 1; }
 /* 活化狀態下的高亮顯示 */
