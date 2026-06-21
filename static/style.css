@@ -1231,7 +1231,7 @@ body, html {
 }
 
 /* ==========================================
-   🌸 Live2D 櫻花灑落物理引擎特效 (極致粉白平衡版)
+   🌸 Live2D 櫻花灑落物理引擎特效 (極致粉白平衡版 - 側邊斜飄微風重製)
 ========================================== */
 .sakura-petal {
     position: absolute;
@@ -1248,22 +1248,35 @@ body, html {
     z-index: 0; 
     opacity: 0;
     
-    /* 綁定雙軌動畫：下墜 + 左右搖曳 */
+    /* 綁定雙軌動畫：斜向下墜 + 左右搖曳 */
     animation: sakuraFall linear infinite, sakuraSway ease-in-out infinite alternate;
 }
 
-/* 物理下墜與旋轉 */
+/* 物理下墜與旋轉 (改為帶有強烈風向的斜飄) */
 @keyframes sakuraFall {
-    0% { top: -10%; opacity: 0; transform: rotate(0deg) scale(0.5); }
+    0% { 
+        top: -10%; 
+        opacity: 0; 
+        /* 初始狀態：無水平位移 */
+        transform: translateX(0) rotate3d(0, 0, 0, 0deg) scale(0.5); 
+    }
     15% { opacity: 0.8; }
     85% { opacity: 0.8; }
-    100% { top: 110%; opacity: 0; transform: rotate(360deg) scale(1.2); }
+    100% { 
+        top: 110%; 
+        opacity: 0; 
+        /* 🌟 核心修改：加入 translateX(45vw) 讓花瓣在落下的過程中，
+           同時向右大幅度移動，形成視覺上的側邊斜向陣風。
+           搭配 rotate3d 模擬花瓣在空中輕盈的立體翻轉。
+        */
+        transform: translateX(-45vw) rotate3d(1, 1, 0, 360deg) scale(1.2); 
+    }
 }
 
-/* 隨風左右搖曳 */
+/* 隨風左右搖曳 (修改擺動幅度以配合斜向風勢) */
 @keyframes sakuraSway {
-    0% { margin-left: 0px; }
-    100% { margin-left: 80px; }
+    0% { margin-left: -15px; }
+    100% { margin-left: 60px; }
 }
 
 /* ==========================================

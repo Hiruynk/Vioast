@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
             local_help_title: "❓ Local LLM Startup Tutorial",
             tooltip_l2d_history: "Live2D Chat Log", l2d_history_title: "Chat History",
             tooltip_l2d_auto: "Voice Direct", tooltip_l2d_verify: "Verify Mode",
-            welcome_md: `Hello! Welcome to the **IVE HKIIT Open Day**! I am your official **AI Chatbot Assistant**.\n\nThe IVE IT Discipline has been upgraded to the **Hong Kong Institute of Information Technology (HKIIT)**! I'm here to provide you with syllabus details, tuition fees, and admission requirements for our Higher Diploma programs, or navigate you through today's activities!\n\n**Try asking me:**\n* Syllabus: \`What will I learn in Higher Diploma in Data Science and AI (IT114126)?\`\n* Admission: \`What are the requirements for Real Estate (BA114037)?\`\n* Transport: \`How do I get to IVE Tsing Yi?\`\n\nHow can I help you today?`
+            welcome_md: `Hello! Welcome to the **IVE HKIIT Open Day**! I am your official **AI Chatbot Assistant**.\n\nThe IVE IT Discipline has been upgraded to the **Hong Kong Institute of Information Technology (HKIIT)**! I'm here to provide you with syllabus details, tuition fees, and admission requirements for our Higher Diploma and Diploma of Foundation Studies programs, or navigate you through today's activities!\n\n**Try asking me:**\n* Syllabus: \`What will I learn in Higher Diploma in Data Science and AI (IT114126)?\`\n* Admission: \`What are the requirements for Real Estate (BA114037)?\`\n* Transport: \`How do I get to IVE Tsing Yi?\`\n\nHow can I help you today?`
         },
         'zh-HK': {
             app_title: "開放日助手", new_chat: "新增對話", recent_chats: "近期對話",
@@ -216,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
             local_help_title: "❓ 本地大模型啟動教學",
             tooltip_l2d_history: "Live2D 聊天紀錄", l2d_history_title: "聊天紀錄",
             tooltip_l2d_auto: "語音直發", tooltip_l2d_verify: "打字校對",
-            welcome_md: `您好！歡迎來到 **IVE HKIIT 開放日**！我是您的官方 **AI Chatbot 智能升學諮詢助手**。\n\n香港專業教育學院（IVE）資訊科技學系已全新升級為 **香港資訊科技學院（HKIIT）**！在這裡，我能為您提供各項熱門的高級文憑 (Higher Diploma) 課程大綱、學費、入學要求，或是為您導航今天的開放日活動！\n\n**您可以試著這樣問我：**\n* 課程內容：\`IT114126 數據科學及人工智能高級文憑學咩？\`\n* 入學條件：\`BA114037 房地產高級文憑有咩入學要求？\`\n* 交通導航：\`青衣 IVE 點樣去？\` \n\n請問今天有甚麼我可以幫到您？`
+            welcome_md: `您好！歡迎來到 **IVE HKIIT 開放日**！我是您的官方 **AI Chatbot 智能升學諮詢助手**。\n\n香港專業教育學院（IVE）資訊科技學系已全新升級為 **香港資訊科技學院（HKIIT）**！在這裡，我能為您提供各項熱門的高級文憑 (Higher Diploma) 及基礎文憑 (Diploma of Foundation Studies) 的課程大綱、學費、入學要求，或是為您導航今天的開放日活動！\n\n**您可以試著這樣問我：**\n* 課程內容：\`IT114126 數據科學及人工智能高級文憑學咩？\`\n* 入學條件：\`BA114037 房地產高級文憑有咩入學要求？\`\n* 交通導航：\`青衣 IVE 點樣去？\` \n\n請問今天有甚麼我可以幫到您？`
         },
         'zh-CN': {
             app_title: "开放日助手", new_chat: "新增对话", recent_chats: "近期对话",
@@ -265,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
             local_help_title: "❓ 本地大模型启动教学",
             tooltip_l2d_history: "Live2D 聊天记录", l2d_history_title: "聊天记录",
             tooltip_l2d_auto: "语音直发", tooltip_l2d_verify: "打字校对",
-            welcome_md: `您好！欢迎来到 **IVE HKIIT 开放日**！我是您的官方 **AI Chatbot 智能升学咨询助手**。\n\n香港专业教育学院（IVE）资讯科技学系已全新升级为 **香港资讯科技学院（HKIIT）**！在这里，我能为您提供各项热门的高级文凭 (Higher Diploma) 课程大纲、学费、入学要求，或是为您导航今天的开放日活动！\n\n**您可以试着这样问我：**\n* 课程内容：\`IT114126 数据科学及人工智能高级文凭学什么？\`\n* 入学条件：\`BA114037 房地产高级文凭有什么入学要求？\`\n* 交通导航：\`青衣 IVE 怎么去？\` \n\n请问今天有什么我可以帮到您？`
+            welcome_md: `您好！欢迎来到 **IVE HKIIT 开放日**！我是您的官方 **AI Chatbot 智能升学咨询助手**。\n\n香港专业教育学院（IVE）资讯科技学系已全新升级为 **香港资讯科技学院（HKIIT）**！在这里，我能为您提供各项热门的高级文凭 (Higher Diploma) 及基础文凭 (Diploma of Foundation Studies) 的课程大纲、学费、入学要求，或是为您导航今天的开放日活动！\n\n**您可以试着这样问我：**\n* 课程内容：\`IT114126 数据科学及人工智能高级文凭学什么？\`\n* 入学条件：\`BA114037 房地产高级文凭有什么入学要求？\`\n* 交通导航：\`青衣 IVE 怎么去？\` \n\n请问今天有什么我可以帮到您？`
         }
     };
 
@@ -2280,7 +2280,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 4. 生成櫻花 (加入 try-catch 護盾，若有任何渲染阻擋自動關閉)
         try {
-            for (let i = 0; i < 25; i++) {
+            for (let i = 0; i < 50; i++) {
                 let petal = document.createElement('div');
                 petal.className = 'sakura-petal';
                 petal.style.left = (Math.random() * 100) + 'vw';
