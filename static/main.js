@@ -35,7 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
         inputLang: 'cantonese', outputLang: 'cantonese', textLang: 'chinese',
         sakuraEffect: true, // 🌟 新增：櫻花特效預設開啟
         live2dLangSet: false,
-        appLang: 'zh-HK'
+        appLang: 'zh-HK',
+        ttsApiUrl: '' // 👈 🌟 新增：用來存放後端傳來的 TTS 網址
     };
 
     const dom = {
@@ -363,6 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appSettings.apiKey = data.api_key || ""; 
                 appSettings.localUrl = data.local_url || "";
                 appSettings.localModel = data.local_model_name || "gemma4:12b";
+                appSettings.ttsApiUrl = data.tts_api_url || ""; // 👈 🌟 儲存 TTS 網址
                 
                 localStorage.setItem('hkiit_settings', JSON.stringify(appSettings));
                 updateModelBadge();
@@ -523,6 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appSettings.apiKey = data.api_key || ""; 
                 appSettings.localUrl = data.local_url || "";
                 appSettings.localModel = data.local_model_name || "gemma4:12b";
+                appSettings.ttsApiUrl = data.tts_api_url || "";
                 
                 localStorage.setItem('hkiit_settings', JSON.stringify(appSettings));
                 updateModelBadge();
@@ -1591,12 +1594,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function speakFrontendTTS(fullText) {
-        ttsInterruptToken++; 
-        const myToken = ttsInterruptToken; 
+        if (!window.audioContext) {
+        window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (window.audioContext.state === 'suspended') {
+            window.audioContext.resume();
+        }
+
+        ttsInterruptToken++; // 🌟 每次呼叫就換一個新 Token
+        const myToken = ttsInterruptToken; // 🌟 記住當下這句話的專屬 Toke
 
         let textToSpeak = fullText;
         let textToDisplay = fullText;
 
+        // 🌟 升級版正則：忽略大小寫(i)、容忍缺少閉合標籤($)、容忍標籤內有空白
         const voiceRegex = /\[\s*VOICE\s*\]([\s\S]*?)(?:\[\s*\/\s*VOICE\s*\]|$)/i;
         const textRegex = /\[\s*TEXT\s*\]([\s\S]*?)(?:\[\s*\/\s*TEXT\s*\]|$)/i;
         
@@ -1608,22 +1619,34 @@ document.addEventListener('DOMContentLoaded', () => {
         if (textMatch) {
             textToDisplay = textMatch[1].trim(); 
         } else if (voiceMatch) {
+            // 防呆：如果 AI 真的沒寫 TEXT 標籤，把 VOICE 部分挖掉，剩下的當顯示文字
             textToDisplay = fullText.replace(voiceRegex, '').trim(); 
         }
 
+        // 🌟 終極防禦：暴力清除畫面上任何殘留的 [TEXT] 或 [VOICE] 相關標籤殘骸
         textToDisplay = textToDisplay.replace(/\[\s*\/?\s*(VOICE|TEXT)\s*\]/gi, '').trim();
         textToSpeak = textToSpeak.replace(/\[\s*\/?\s*(VOICE|TEXT)\s*\]/gi, '').trim();
+
+        // 過濾 Markdown 符號以免語音引擎誤讀
         textToSpeak = textToSpeak.replace(/[*#_`~]/g, '');
 
         const targetLang = appSettings.outputLang || 'cantonese';
+        // ... (下方 langMap 與 playNextQueue 保持不變) ...
+        
+        // 🌟 建立語言映射表 (把後端的邏輯搬到前端)
         const langMap = { 'cantonese': 'yue', 'mandarin': 'zh', 'japanese': 'ja', 'english': 'en' };
         const mappedLang = langMap[targetLang] || 'yue';
 
+        // 🚀 核心優化 1：極限切分！加入「逗號(,)」與「頓號(、)」
         const splitRegex = /[^，。、！？,.!?\n]+[，。、！？,.!?\n]*/g;
         const voiceSentences = textToSpeak.match(splitRegex) || [textToSpeak];
         const textSentences = textToDisplay.match(splitRegex) || [textToDisplay];
         
         if (currentAudio) {
+            // 🌟 徹底殺死舊語音，拔除所有事件監聽與 src，釋放記憶體
+            currentAudio.onplaying = null;
+            currentAudio.onerror = null;
+            currentAudio.onended = null;
             currentAudio.pause();
             currentAudio.removeAttribute('src'); 
             currentAudio.load(); 
@@ -1644,14 +1667,15 @@ document.addEventListener('DOMContentLoaded', () => {
         let accumulatedText = ""; 
 
         function playNextQueue() {
+            // 🛑 絕對防護 1：如果這時候 Token 變了（代表被新語音覆蓋），立刻終止！
             if (myToken !== ttsInterruptToken) return;
 
             if (sentenceQueue.length === 0) {
                 ttsSpeaking = false;
                 setTimeout(() => { 
+                    // 🛑 絕對防護 2：收合氣泡前也要檢查是否被中斷
                     if(!ttsSpeaking && myToken === ttsInterruptToken) {
-                        const bubble = document.getElementById('live2d-speech-bubble');
-                        if (bubble) bubble.classList.add('hidden'); 
+                        document.getElementById('live2d-speech-bubble').classList.add('hidden'); 
                     }
                 }, 3000);
                 return;
@@ -1659,8 +1683,19 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const currentItem = sentenceQueue.shift();
             const encodedText = encodeURIComponent(currentItem.voice);
-            const primaryUrl = `https://tts-api.hiruynk.com/?text=${encodedText}&text_language=${mappedLang}`;
-            const backupUrl = `https://tts-mac-api.hiruynk.com/?text=${encodedText}&text_language=${mappedLang}`;
+            // =======================================================
+            // 🔒 100% 依賴後端變數：JS 代碼中不包含任何真實網址字串
+            // =======================================================
+            let baseUrl = appSettings.ttsApiUrl;
+            
+            // 防禦鎖：如果完全沒有網址（例如未登入或環境變數未設定），直接救援進無聲打字，不報錯也不外洩
+            if (!baseUrl) {
+                executeSilentTyping(true);
+                return;
+            }
+            
+            if (!baseUrl.endsWith('/')) baseUrl += '/';
+            const primaryUrl = `${baseUrl}?text=${encodedText}&text_language=${mappedLang}`;
 
             let baseText = accumulatedText;
             if (baseText !== "") baseText += " ";
@@ -1669,37 +1704,38 @@ document.addEventListener('DOMContentLoaded', () => {
             function triggerTypewriter(audioObj) {
                 ttsSpeaking = true;
                 const bubble = document.getElementById('live2d-speech-bubble');
-                let duration = audioObj ? audioObj.duration : 0;
+                let duration = audioObj.duration;
                 if (isNaN(duration) || !isFinite(duration) || duration === 0) {
                     duration = textToType.length * 0.2; 
                 }
                 
+                // 🌟 修正 1：移除原本 -2000 的舊補償！改為扣除 200 毫秒，讓文字剛好在語音結束前打完
                 let typingTime = (duration * 1000) - 200;
                 if (typingTime < textToType.length * 20) {
                     typingTime = (duration * 1000); 
                 }
+                // 調快最低打字速度，防止過慢
                 const speed = Math.max(20, typingTime / textToType.length);
 
                 let charIndex = 0;
                 if (window.live2dTypeInterval) clearInterval(window.live2dTypeInterval);
                 if (window.live2dTypeDelay) clearTimeout(window.live2dTypeDelay);
 
+                // 🌟 修正 2：將延遲從 2000 改為 0！(聲音一出，文字秒出)
                 window.live2dTypeDelay = setTimeout(() => {
-                    if (bubble) {
-                        bubble.className = `live2d-bubble mood-${live2dMood}`;
-                        window.live2dTypeInterval = setInterval(() => {
-                            charIndex++;
-                            const txtBox = bubble.querySelector('.bubble-text');
-                            if(txtBox) txtBox.innerText = baseText + textToType.substring(0, charIndex);
-                            if (charIndex >= textToType.length) {
-                                clearInterval(window.live2dTypeInterval);
-                            }
-                        }, speed);
-                    }
+                    bubble.className = `live2d-bubble mood-${live2dMood}`;
+                    window.live2dTypeInterval = setInterval(() => {
+                        charIndex++;
+                        bubble.querySelector('.bubble-text').innerText = baseText + textToType.substring(0, charIndex);
+                        if (charIndex >= textToType.length) {
+                            clearInterval(window.live2dTypeInterval);
+                        }
+                    }, speed);
                 }, 0); 
             }
 
             function handleAudioEnded() {
+                // 🛑 絕對防護 3：如果語音結束時 Token 已變，不准播下一句舊台詞！
                 if (myToken !== ttsInterruptToken) return;
 
                 if (window.live2dTypeDelay) clearTimeout(window.live2dTypeDelay);
@@ -1708,119 +1744,133 @@ document.addEventListener('DOMContentLoaded', () => {
                 const bubble = document.getElementById('live2d-speech-bubble');
                 if (bubble) {
                     bubble.className = `live2d-bubble mood-${live2dMood}`;
-                    const txtBox = bubble.querySelector('.bubble-text');
-                    if(txtBox) txtBox.innerText = accumulatedText;
+                    bubble.querySelector('.bubble-text').innerText = accumulatedText;
                 }
                 playNextQueue();
             }
 
-            // 🌟 終極無聲打字救援模式 (防禦氣泡卡死的最終手段)
-            let isSilentTypingTriggered = false;
-            function executeSilentTyping(isGuest = false) {
-                if (isSilentTypingTriggered) return; // 防重複觸發
-                isSilentTypingTriggered = true;
-
-                if (!isGuest) console.warn("⚠️ TTS 音訊無法載入或被阻擋，已啟動無聲打字救援");
+            // 👇 🌟 核心新增：終極無聲打字救援模式
+            function executeSilentTyping() {
+                console.warn("⚠️ 所有 TTS API 無回應，啟動無聲逐字顯示模式");
                 
+                // 估算打字時間：每個字 0.2 秒 (最少給予 1 秒的緩衝)
                 const estimatedSeconds = Math.max(1.0, textToType.length * 0.2);
+                
+                // 傳入一個帶有假 duration 的物件，騙過打字機讓它啟動
                 triggerTypewriter({ duration: estimatedSeconds });
                 
+                // 根據打字機的邏輯，2秒延遲 + 實際打字時間 + 800ms 停頓緩衝後，自動呼叫下一句
+                setTimeout(() => {
+                    handleAudioEnded();
+                }, 2000 + (estimatedSeconds * 1000) + 800);
+            }
+
+            // 👇 🌟 核心新增：終極無聲打字救援模式 (升級支援訪客過濾)
+            function executeSilentTyping(isGuest = false) {
+                if (!isGuest) {
+                    console.warn("⚠️ 所有 TTS API 無回應，啟動無聲逐字顯示模式");
+                }
+                
+                // 估算打字時間：每個字 0.2 秒 (最少給予 1 秒的緩衝)
+                const estimatedSeconds = Math.max(1.0, textToType.length * 0.2);
+                
+                // 傳入一個帶有假 duration 的物件，騙過打字機讓它啟動
+                triggerTypewriter({ duration: estimatedSeconds });
+                
+                // 🌟 修正：移除舊版寫死的 2 秒延遲，配合最新的「秒出字」邏輯
                 setTimeout(() => {
                     handleAudioEnded();
                 }, (estimatedSeconds * 1000) + 800);
             }
 
-            // 訪客攔截：未登入者直接進入無聲打字
+            // ... (前面的 triggerTypewriter 和 handleAudioEnded 保持不變)
+
+            // 🌟 核心權限攔截：檢查是否登入！未登入直接切換為無聲打字，不發送 API 請求！
             if (!currentUser) {
-                executeSilentTyping(true);
+                executeSilentTyping(true); // true 代表是訪客，安靜執行，不印出系統報錯警告
                 return;
             }
 
             currentAudio = new Audio(primaryUrl);
             currentAudio.crossOrigin = "anonymous"; 
-            currentAudio.preload = "auto";
 
-            // 💣 看門狗計時器 (Watchdog Timer)：
-            // 如果 4 秒內音訊都沒有成功開始播放，直接強制啟動打字，打破 Loading 狀態！
-            let hasStartedPlaying = false;
-            const watchdogTimer = setTimeout(() => {
-                if (!hasStartedPlaying && myToken === ttsInterruptToken) {
-                    console.warn("⏳ 語音 API 回應超時，強制解鎖對話氣泡！");
-                    executeSilentTyping();
-                }
-            }, 4000);
+            let isFallbackTriggered = false;
 
-            // 成功開始播放時的處理
-            const onPlayStart = () => { 
+            // 🌟 核心修復 1：從 onplay 改為 onplaying！
+            // 確保 TTS 伺服器推理完畢，且瀏覽器真正開始發聲的那一刻，才解鎖口型與打字機！
+            currentAudio.onplaying = () => { 
                 if (myToken !== ttsInterruptToken) { currentAudio.pause(); return; } 
-                if (hasStartedPlaying) return; 
-                
-                hasStartedPlaying = true;
-                clearTimeout(watchdogTimer); // 解除定時炸彈
-
                 triggerTypewriter(currentAudio);
                 
-                try {
-                    if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    if (audioContext.state === 'suspended') audioContext.resume();
-
-                    if (!audioAnalyser) {
-                        audioAnalyser = audioContext.createAnalyser();
-                        audioAnalyser.fftSize = 256; 
-                        audioAnalyser.connect(audioContext.destination); 
+                if (!window.audioAnalyser) {
+                    window.audioAnalyser = window.audioContext.createAnalyser();
+                    window.audioAnalyser.fftSize = 256; 
+                    // 確保分析器有連接到最終輸出 (喇叭)
+                    window.audioAnalyser.connect(window.audioContext.destination); 
+                }
+                if (!currentAudio.sourceNode) {
+                    try {
+                        currentAudio.sourceNode = window.audioContext.createMediaElementSource(currentAudio);
+                        currentAudio.sourceNode.connect(window.audioAnalyser);
+                    } catch(e) { 
+                        // 如果綁定失敗 (通常是 CORS 限制或重複綁定)，瀏覽器會報錯
+                        // 此時千萬不要阻擋播放，就算沒有口型，至少要讓聲音出來！
+                        console.warn("Live2D 分析器綁定失敗，可能因跨域限制。聲音將維持原始輸出:", e); 
                     }
-
-                    if (!currentAudio.sourceNode) {
-                        currentAudio.sourceNode = audioContext.createMediaElementSource(currentAudio);
-                        currentAudio.sourceNode.connect(audioAnalyser);
-                    }
-                } catch(e) { console.warn("分析器綁定失敗:", e); }
+                }
             };
 
-            // 現代化監聽器綁定
-            currentAudio.addEventListener('playing', onPlayStart);
-            currentAudio.addEventListener('play', () => {
-                if (currentAudio.readyState >= 3) onPlayStart();
-            });
+            // 🌟 嚴格鎖定的錯誤處理鏈
+            currentAudio.onerror = () => {
+                if (myToken !== ttsInterruptToken) return; 
+                
+                if (isFallbackTriggered) return;
+                isFallbackTriggered = true;
+                console.warn("⚡ 主伺服器失效，嘗試安全重新播放一次...");
+                const safeAudio = new Audio(primaryUrl);
+                currentAudio = safeAudio; 
+                let safeFailed = false;
 
-            // 錯誤捕捉降級機制
-            currentAudio.addEventListener('error', () => {
-                if (myToken !== ttsInterruptToken) return;
-                clearTimeout(watchdogTimer);
+                safeAudio.onplaying = () => {
+                    if (myToken !== ttsInterruptToken) { safeAudio.pause(); return; }
+                    triggerTypewriter(safeAudio);
+                };
+                safeAudio.onended = handleAudioEnded;
                 
-                console.warn("⚡ 主伺服器語音失效，嘗試備用伺服器...");
-                const backupAudio = new Audio(backupUrl);
-                currentAudio = backupAudio; 
-                
-                backupAudio.addEventListener('playing', onPlayStart);
-                backupAudio.addEventListener('ended', handleAudioEnded);
-                backupAudio.addEventListener('error', () => {
+                safeAudio.onerror = () => { 
                     if (myToken !== ttsInterruptToken) return;
-                    clearTimeout(watchdogTimer);
+                    if (safeFailed) return;
+                    safeFailed = true;
+                    // 🚨 直接切換至無聲打字救援模式
                     executeSilentTyping();
-                });
+                };
                 
-                backupAudio.play().catch(e => {
-                    clearTimeout(watchdogTimer);
-                    executeSilentTyping(); 
+                safeAudio.play().catch(e => {
+                    if (e.name === 'NotAllowedError') handleAudioEnded();
+                    else if (!safeFailed) {
+                        safeFailed = true;
+                        safeAudio.onerror(); 
+                    }
                 });
-            });
+            };
 
-            if (sentenceQueue.length > 0) {
-                const nextUrl = `https://tts-api.hiruynk.com/?text=${encodeURIComponent(sentenceQueue[0].voice)}&text_language=${mappedLang}`;
+            // ... (後面的 fetch nextUrl 和 currentAudio.play() 保持不變)
+
+            // 預載下一句音訊
+            if (sentenceQueue.length > 0 && appSettings.ttsApiUrl) {
+                let baseUrl = appSettings.ttsApiUrl;
+                if (!baseUrl.endsWith('/')) baseUrl += '/';
+                const nextUrl = `${baseUrl}?text=${encodeURIComponent(sentenceQueue[0].voice)}&text_language=${mappedLang}`;
                 fetch(nextUrl).catch(()=>{}); 
             }
 
-            currentAudio.addEventListener('ended', handleAudioEnded);
-            
+            currentAudio.onended = handleAudioEnded;
             currentAudio.play().catch(e => {
-                clearTimeout(watchdogTimer); 
-                // 🌟 核心修復：當遇到自動播放阻擋時，絕對不准跳過，強制執行無聲打字
                 if (e.name === 'NotAllowedError') {
-                    console.warn("⚠️ 瀏覽器阻擋自動播放，已轉為無聲打字模式");
-                    executeSilentTyping(); 
-                } else {
-                    currentAudio.dispatchEvent(new Event('error'));
+                    console.error("瀏覽器阻擋自動播放:", e);
+                    handleAudioEnded();
+                } else if (!isFallbackTriggered) {
+                    currentAudio.onerror();
                 }
             });
         }

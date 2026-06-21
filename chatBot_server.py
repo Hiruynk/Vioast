@@ -29,6 +29,7 @@ app = FastAPI()
 # 🌟 雲端資料庫驗證初始化 (MongoDB Atlas)
 # ==========================================
 MONGO_URI = os.environ.get("MONGO_URI")
+TTS_API_URL = os.environ.get("TTS_API_URL")
 users_collection = None
 db = None  # 🌟 新增這行，確保全域可用
 
@@ -71,7 +72,8 @@ async def login_api(req: LoginReq):
             "status": "success", 
             "api_key": user.get("api_key", ""),
             "local_url": user.get("local_url", ""),
-            "local_model_name": user.get("local_model_name", "gemma4:12b")
+            "local_model_name": user.get("local_model_name", "gemma4:12b"),
+            "tts_api_url": TTS_API_URL # 👈 🌟 新增：登入成功時將 API 網址送給前端
         }
     return {"status": "error"}
 
@@ -103,7 +105,8 @@ async def get_key_api(req: GetKeyReq):
             "status": "success", 
             "api_key": user.get("api_key", ""),
             "local_url": user.get("local_url", ""),
-            "local_model_name": user.get("local_model_name", "gemma4:12b")
+            "local_model_name": user.get("local_model_name", "gemma4:12b"),
+            "tts_api_url": TTS_API_URL # 👈 🌟 新增：重整網頁自動同步時送給前端
         }
     return {"status": "error"}
 
