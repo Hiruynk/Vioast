@@ -34,15 +34,20 @@
 }
 
 /* ==========================================
-   2. 全局基礎 與 全介面動態主題過渡
+   2. 全局基礎 (終極物理全螢幕)
 ========================================== */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body, html {
-    position: fixed; height: 100vh; width: 100vw;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0; /* 🌟 確保四周死死貼合邊界 */
+    width: 100vw;
+    
+    /* 🌟 致命修復：捨棄 100vh！改用動態視口 100dvh 與 JS 變數，徹底解決輸入框被吃掉的 Bug！ */
+    height: var(--app-height, 100dvh) !important;
+    
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background-color: var(--bg-color); color: var(--text-color);
     
-    /* 🌟 升級：使用蘋果經典的 0.5 秒流體減速曲線，讓大面積背景色變更時極度柔和 */
     transition: background-color 0.5s cubic-bezier(0.25, 1, 0.5, 1), 
                 color 0.5s cubic-bezier(0.25, 1, 0.5, 1);
                 
@@ -55,23 +60,18 @@ body, html {
 * { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* 🌟 新增：核心 UI 元件主題變色防閃爍護盾 (全介面同步絲滑漸變) */
-#app-header, 
+/* 🚨 核心修復：將 #app-header 徹底拔除，絕對禁止它套用 transform 動畫！ */
 .sidebar, 
-.input-box, 
-.live2d-dashboard, 
 .modal-content, 
 .custom-dropdown-menu,
 .dropdown-item,
 .history-item, 
 .msg-content,
 .user-message .msg-content,
-.live2d-bubble,
 .sidebar-action-btn,
 .icon-btn,
 .copy-btn,
 .l2d-floating-btn {
-    /* 將色彩、邊框、陰影的漸變時間同步鎖定為 0.5 秒 */
-    /* 同時完美保留了你原本寫在各處的 transform (Q彈) 與 opacity (淡入淡出) 的動畫權限，絕不衝突 */
     transition: background-color 0.5s cubic-bezier(0.25, 1, 0.5, 1), 
                 color 0.5s cubic-bezier(0.25, 1, 0.5, 1), 
                 border-color 0.5s cubic-bezier(0.25, 1, 0.5, 1), 
@@ -79,6 +79,16 @@ body, html {
                 transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), 
                 opacity 0.25s ease,
                 visibility 0.25s !important;
+}
+
+/* 🌟 讓導航列維持 0 延遲的物理死鎖，只保留顏色主題切換的漸變 */
+#app-header {
+    transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease !important;
+}
+
+/* 歸還基礎顏色漸變給輸入框等元件 */
+.input-box, .input-container, .live2d-dashboard, .live2d-bubble {
+    transition: background-color 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
 }
 
 /* ==========================================
@@ -594,22 +604,38 @@ body, html {
 }
 
 /* ==========================================
-   Live2D 模式全新 UI 面板與氣泡 (巨大懸浮島版)
+   Live2D 模式全新 UI 面板與氣泡 (背景物理鎖死版)
 ========================================== */
 #view-live2d {
     display: flex; flex-direction: column; justify-content: space-between; align-items: center;
-    background: url('/static/live2D_background.jpg') center/cover !important;
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: transparent !important; 
+    position: absolute; top: 0; left: 0; width: 100vw; 
+    
+    /* 🌟 致命修復：拔除死板的 --physical-height，
+       改用我們剛剛完美對接網址列的 --app-height，讓它與普通對話模式 100% 同步！ */
+    height: var(--app-height, 100dvh) !important;
+    
     overflow: hidden;
 }
+
+/* 🌟 核心修復 2：改用 fixed 與 top center，讓背景死死釘在螢幕物理底層，絕對不被推擠！ */
+#view-live2d::after {
+    content: ''; position: fixed; top: 0; left: 0; width: 100vw; 
+    height: 100vh !important; /* 給予超大高度，確保鍵盤升降絕對不露底 */
+    
+    /* 🌟 致命修復：將 center 更改為 top center，這樣高度縮小時，圖片只會裁切底部，視覺上完全靜止！ */
+    background: url('/static/live2D_background.jpg') top center/cover !important;
+    
+    z-index: -2; pointer-events: none;
+}
+
 #view-live2d::before {
-    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    content: ''; position: fixed; top: 0; left: 0; width: 100vw; 
+    height: 100vh !important;
     background: rgba(255, 255, 255, 0.45); 
-    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); z-index: 0;
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); z-index: -1; pointer-events: none;
 }
-[data-theme="dark"] #view-live2d::before {
-    background: rgba(15, 18, 25, 0.7); 
-}
+[data-theme="dark"] #view-live2d::before { background: rgba(15, 18, 25, 0.7); }
 #live2d-stage-container, .live2d-dashboard { z-index: 1; }
 
 /* 🌟 WebGL 保命隱藏法 (解決模型跑路問題) */
@@ -1331,44 +1357,31 @@ body, html {
 }
 
 /* ==========================================
-   🌸 Live2D 櫻花灑落物理引擎特效 (極致粉白平衡版 - 側邊斜飄微風重製)
+   🌸 Live2D 櫻花灑落物理引擎特效 (極致粉白平衡版 - 修復鍵盤推擠版)
 ========================================== */
 .sakura-petal {
-    position: absolute;
-    /* 🌟 終極調色：起點保持高潔白，終點混入微量的櫻花嫩粉 (#ffd1dc)，在旋轉時能透出淡淡的粉色 */
+    position: fixed !important; /* 🌟 關鍵修復 1：改用 fixed 鎖定於視窗，徹底脫離會縮放的內部容器 */
     background: linear-gradient(135deg, #ffffff 0%, #ffd1dc 100%);
-    
-    /* 模擬花瓣的幾何形狀 (兩角圓、兩角尖) */
     border-radius: 15px 2px 15px 2px;
-    
-    /* 🌟 終極調色：將發光陰影改為淡淡的柔粉色，讓白色花瓣邊緣帶有一層粉嫩的高級光暈 */
     box-shadow: 0 0 6px rgba(255, 209, 220, 0.6);
-    
     pointer-events: none;
     z-index: 0; 
     opacity: 0;
-    
-    /* 綁定雙軌動畫：斜向下墜 + 左右搖曳 */
     animation: sakuraFall linear infinite, sakuraSway ease-in-out infinite alternate;
 }
 
 /* 物理下墜與旋轉 (改為帶有強烈風向的斜飄) */
 @keyframes sakuraFall {
     0% { 
-        top: -10%; 
+        top: -10vh; /* 🌟 關鍵修復 2：將 % 改為 vh，利用物理視口高度，不受鍵盤縮放影響 */
         opacity: 0; 
-        /* 初始狀態：無水平位移 */
         transform: translateX(0) rotate3d(0, 0, 0, 0deg) scale(0.5); 
     }
     15% { opacity: 0.8; }
     85% { opacity: 0.8; }
     100% { 
-        top: 110%; 
+        top: 110vh; /* 🌟 同上，改為 vh */
         opacity: 0; 
-        /* 🌟 核心修改：加入 translateX(45vw) 讓花瓣在落下的過程中，
-           同時向右大幅度移動，形成視覺上的側邊斜向陣風。
-           搭配 rotate3d 模擬花瓣在空中輕盈的立體翻轉。
-        */
         transform: translateX(-45vw) rotate3d(1, 1, 0, 360deg) scale(1.2); 
     }
 }
@@ -1571,4 +1584,331 @@ body, html {
     transform: scale(1.02);
     padding: 0 10px; /* 增加一點內距讓膠囊變胖 */
     transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ==========================================
+   🌟 鍵盤原生與 VK API 雙引擎防護 (最終鎖死版)
+========================================== */
+/* 🌟 護盾 1：反向抵銷推擠 (Pan)，將靜態元件壓回物理原位 */
+#app-header, 
+.sidebar { 
+    /* 🌟 關鍵修復 3：從這裡把 #view-live2d::after 和 ::before 徹底拔除！ */
+    /* 絕對不使用 transform，避免覆寫側邊欄的開關動畫 */
+    top: var(--ios-offset, 0px) !important;
+}
+
+/* 🌟 關鍵修復 4：為 Live2D 背景建立獨立的絕對死鎖，不受任何位移變數影響 */
+#view-live2d::after, 
+#view-live2d::before {
+    top: 0 !important;
+    margin-top: 0 !important;
+    transform: none !important;
+}
+
+#live2d-stage-container, 
+.l2d-floating-btn,
+.l2d-history-panel {
+    /* 使用 margin 進行反向抵銷，完美避開點擊動畫的 transform 衝突 */
+    margin-top: var(--ios-offset, 0px) !important;
+}
+
+/* 🌟 確保抵銷推擠時，導航列 0 毫秒絕對靜止 */
+#app-header {
+    transition: background-color 0.5s cubic-bezier(0.25, 1, 0.5, 1), 
+                color 0.5s cubic-bezier(0.25, 1, 0.5, 1), 
+                border-color 0.5s cubic-bezier(0.25, 1, 0.5, 1) !important;
+}
+
+/* 🌟 歸還側邊欄的 transform 動畫！ 
+   因為 iOS 鍵盤防護現在是操作 top 屬性，所以這裡把 transform 動畫加回來，
+   完美恢復了左右滑動開關的質感，且絕對不影響上下的零延遲死鎖！ */
+.sidebar {
+    transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1),
+                background-color 0.5s cubic-bezier(0.25, 1, 0.5, 1), 
+                color 0.5s cubic-bezier(0.25, 1, 0.5, 1), 
+                border-color 0.5s cubic-bezier(0.25, 1, 0.5, 1) !important;
+}
+.l2d-floating-btn {
+    transition: background-color 0.2s, opacity 0.2s !important;
+}
+
+/* 🌟 護盾 2：Android VK API 專屬的蘋果級平滑推升動畫 */
+.input-container {
+    bottom: var(--kb-lift, 0px) !important;
+    transition: bottom 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.5s ease, border-color 0.5s ease !important;
+    will-change: bottom;
+}
+
+.live2d-dashboard {
+    /* 在 X 軸保持絕對置中，Y 軸交給底部的 bottom 控制，再也不亂飛！ */
+    transform: translateX(-50%) !important; 
+    bottom: calc(50px + var(--kb-lift, 0px)) !important;
+    transition: bottom 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.5s ease, border-color 0.5s ease !important;
+    will-change: bottom;
+}
+
+@media screen and (max-width: 768px) {
+    .live2d-dashboard {
+        bottom: calc(30px + var(--kb-lift, 0px)) !important;
+    }
+}
+
+#chat-history {
+    padding-bottom: calc(200px + var(--kb-lift, 0px)) !important;
+    transition: padding-bottom 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ==========================================
+   🌟 導航欄 Gemini App 原生質感重製 (寬敞呼吸防吃字版)
+========================================== */
+/* 1. 釋放全螢幕空間 */
+.view-container {
+    padding-top: 0 !important; 
+}
+
+/* 2. 🌟 絕對鎖死外框與漸變層 */
+#app-header {
+    height: 66px !important; /* 🌟 加高給予島嶼呼吸空間 */
+    padding: 0 14px !important;
+    display: flex !important; align-items: center !important; justify-content: space-between !important;
+    background: linear-gradient(to bottom, var(--bg-color) 45%, transparent 100%) !important;
+    backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+    border: none !important; box-shadow: none !important;
+    pointer-events: none; 
+}
+#app-header > * { pointer-events: auto; }
+
+body:has(#view-live2d:not(.l2d-hidden)) #app-header {
+    background: transparent !important; 
+}
+
+/* 3. 🏝️ 左側島嶼 (加寬加大，徹底解決「逼迫」感) */
+.header-left {
+    display: flex !important; align-items: center !important;
+    height: 50px !important; /* 🌟 弄大：高度提升到 50px */
+    padding: 7px 20px 7px 7px !important; /* 🌟 寬一些：右側 Padding 增加到 20px，絕不擁擠 */
+    gap: 10px !important; /* 🌟 不迫：拉開按鈕與文字的距離 */
+    border-radius: 30px !important;
+    box-sizing: border-box !important;
+    
+    /* 🌟 核心修復：使用 max-content 強制完整包覆，絕對不再吃字！不需長！ */
+    flex: 0 0 auto !important; 
+    width: max-content !important;
+    max-width: none !important;
+    min-width: max-content !important;
+    
+    background-color: transparent !important;
+    border: 1px solid transparent !important;
+    box-shadow: none !important;
+    transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s !important;
+}
+
+body:has(#view-live2d:not(.l2d-hidden)) .header-left {
+    /* Live2D 模式：顯現毛玻璃背景 */
+    background-color: var(--header-bg) !important;
+    backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important;
+    border-color: var(--border-color) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+}
+
+/* 4. 左側島嶼內部按鈕 (維持完美圓形，預設透明) */
+#app-header .menu-btn,
+#app-header .lang-nav-btn {
+    width: 36px !important; height: 36px !important;
+    padding: 0 !important; margin: 0 !important;
+    border-radius: 50% !important;
+    display: flex !important; align-items: center !important; justify-content: center !important;
+    box-sizing: border-box !important;
+    
+    /* 👇 🌟 核心修改 1：預設狀態改為完全透明，去除邊框 */
+    background-color: transparent !important;
+    border: 1px solid transparent !important;
+    
+    transition: background-color 0.2s, border-color 0.2s, transform 0.2s !important;
+}
+
+/* 👇 🌟 核心修改 2：加入懸停 (Hover) 與點擊 (Active) 時的底色浮現效果 */
+#app-header .menu-btn:hover,
+#app-header .lang-nav-btn:hover {
+    background-color: var(--input-bg) !important;
+    border: 1px solid rgba(128, 128, 128, 0.1) !important;
+}
+
+#app-header .menu-btn:active,
+#app-header .lang-nav-btn:active {
+    background-color: var(--border-color) !important; /* 點擊時顏色稍微加深 */
+    transform: scale(0.92) !important; /* 增加蘋果級的點擊Ｑ彈微縮感 */
+}
+
+/* 確保 Live2D 模式下依然保持乾淨透明 */
+body:has(#view-live2d:not(.l2d-hidden)) #app-header .menu-btn,
+body:has(#view-live2d:not(.l2d-hidden)) #app-header .lang-nav-btn {
+    background-color: transparent !important;
+    border-color: transparent !important;
+}
+
+/* Live2D 模式下的專屬懸停效果 (微透白/黑) */
+body:has(#view-live2d:not(.l2d-hidden)) #app-header .menu-btn:hover,
+body:has(#view-live2d:not(.l2d-hidden)) #app-header .lang-nav-btn:hover {
+    background-color: rgba(128, 128, 128, 0.15) !important;
+}
+
+/* 5. 📝 文字區塊 (排版絕對鎖死，強制禁止手機版 CSS 覆寫截斷) */
+.header-center-stack {
+    display: flex !important; flex-direction: column !important;
+    justify-content: center !important; align-items: flex-start !important;
+    height: auto !important; gap: 2px !important; 
+    
+    /* 👇 🌟 核心控制：用這個把整個文字組合「往下壓」！ */
+    margin: 0 !important; /* 保留原本的重置 */
+    margin-top: 3px !important; /* 👈 數字越大，整個組合就越低！你可以試試 2px ~ 5px 找出最完美的位置 */
+    
+}
+#header-title {
+    font-size: 17px !important; font-weight: bold !important; line-height: 1.1 !important;
+    margin: 0 !important; padding: 0 !important; letter-spacing: 0.5px !important;
+    
+    /* 🌟 致命修復：徹底覆蓋舊版 max-width: 160px 與 overflow: hidden，保證文字不被吃掉 */
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    width: auto !important;
+    max-width: none !important;
+    display: block !important;
+}
+.model-dropdown-btn {
+    font-size: 12px !important; font-weight: 600 !important; line-height: 1.1 !important;
+    margin: 0 !important; padding: 2px 4px !important; margin-left: -4px !important;
+    background-color: transparent !important; border: none !important;
+    white-space: nowrap !important;
+    margin-top: -2px !important;
+}
+
+@media screen and (max-width: 768px) {
+    #header-title { font-size: 16px !important; }
+    .model-dropdown-btn { font-size: 11px !important; }
+}
+
+/* ==========================================
+   🍔 側邊欄按鈕 SVG 圖案單體精準放大
+========================================== */
+#app-header .menu-btn svg {
+    /* 🌟 核心控制 1：將 SVG 畫布等比例放大（原本預設大約是 20px） */
+    width: 25px !important;
+    height: 25px !important;
+}
+
+#app-header .menu-btn svg line {
+    /* 🌟 核心控制 2：如果想讓 = 號看起來更有份量、更醒目，可以調整線條粗細 */
+    stroke-width: 1.8 !important; /* 👈 預設是 2.5，調到 2.8 或 3.0 可以讓圖案線條更粗、視覺上更大 */
+}
+
+#app-header .menu-btn {
+    /* 🔒 防護鎖：鎖死按鈕物理外殼為 36px，保證無論內部 SVG 怎麼放大，島嶼絕對 0 變形、0 擠壓！ */
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* 6. 🏝️ 右側模式切換島嶼 (普通模式隱形版) */
+#app-header .nav-buttons {
+    display: flex !important; align-items: center !important;
+    height: 50px !important; 
+    padding: 7px 9px !important; 
+    gap: 8px !important; 
+    border-radius: 30px !important;
+    box-sizing: border-box !important;
+    
+    flex: 0 0 auto !important;
+    width: max-content !important;
+    
+    /* 👇 🌟 核心修改 1：普通對話模式下，徹底拔除島嶼外框與底色 */
+    background-color: transparent !important;
+    border: 1px solid transparent !important;
+    box-shadow: none !important;
+    transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s !important;
+}
+
+/* 🏝️ Live2D 模式專屬：保留毛玻璃大島嶼 */
+body:has(#view-live2d:not(.l2d-hidden)) #app-header .nav-buttons {
+    background-color: var(--header-bg) !important;
+    backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important;
+    border-color: var(--border-color) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+}
+
+/* 7. 右側按鈕單體 (普通模式預設透明) */
+#app-header .nav-buttons button {
+    width: 36px !important; height: 36px !important;
+    padding: 0 !important; margin: 0 !important;
+    border-radius: 50% !important;
+    background-color: transparent !important; border: 1px solid transparent !important;
+    display: flex !important; align-items: center !important; justify-content: center !important;
+    color: var(--text-color) !important; box-sizing: border-box !important;
+    transition: all 0.2s ease !important;
+}
+
+/* 👇 🌟 核心修復：被選中的模式（例如現在是普通對話）必須亮起底色！ */
+#app-header .nav-buttons button.active {
+    background-color: var(--text-color) !important;
+    color: var(--bg-color) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* 👇 加入懸停與點擊效果 (加入 :not(.active) 避免干擾已經亮起的按鈕) */
+#app-header .nav-buttons button:hover:not(.active) {
+    background-color: var(--input-bg) !important;
+    border: 1px solid rgba(128, 128, 128, 0.1) !important;
+}
+#app-header .nav-buttons button:active:not(.active) {
+    background-color: var(--border-color) !important;
+    transform: scale(0.92) !important;
+}
+
+/* ==========================================
+   👇 🌟 核心修改 4：Live2D 模式下，恢復被選中按鈕的實色底高亮
+========================================== */
+body:has(#view-live2d:not(.l2d-hidden)) #app-header .nav-buttons button.active {
+    /* 🌟 核心修復：改用主題變數！淺色模式下會是純黑底，深色模式下會是純白底！ */
+    background-color: var(--text-color) !important;
+    color: var(--bg-color) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    border-color: transparent !important;
+}
+
+/* （原本下方那些寫死的 [data-theme="dark"] 都不需要了，因為 var() 變數已經會自動幫我們判斷深淺色了！） */
+
+/* Live2D 模式下：深色主題的高亮適配 */
+[data-theme="dark"] body:has(#view-live2d:not(.l2d-hidden)) #app-header .nav-buttons button.active {
+    background-color: #e3e3e3 !important;
+    color: #131314 !important;
+    box-shadow: none !important;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) body:has(#view-live2d:not(.l2d-hidden)) #app-header .nav-buttons button.active {
+        background-color: #e3e3e3 !important;
+        color: #131314 !important;
+        box-shadow: none !important;
+    }
+}
+
+/* ==========================================
+   🌟 對話文字頂部漸變消失 (Scroll Mask Fade)
+========================================== */
+#chat-history {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 85px, black 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 85px, black 100%);
+    padding-top: 85px !important; 
+}
+/* ==========================================
+   🌟 側邊欄遮罩層級修正 (解決白色主題漸變白光 Bug)
+========================================== */
+.overlay, .sidebar-overlay {
+    /* 🌟 核心修復：將遮罩圖層提升到 999！
+       確保它大於導航欄的 500，但小於側邊欄本體的 1000。
+       這樣側邊欄打開時，黑色遮罩會完美覆蓋整個導航欄，白光瞬間消失！*/
+    z-index: 999 !important; 
 }

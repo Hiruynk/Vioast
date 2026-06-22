@@ -2265,10 +2265,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 監聽螢幕旋轉或大小改變，即時縮放模型
+   // 監聽螢幕旋轉或大小改變，即時縮放模型
     window.addEventListener('resize', () => {
         if (live2dModelInstance && currentMode === 'live2d') {
-            setTimeout(() => updateLive2DScale(live2dModelInstance), 100);
+            // 🌟 核心修復：只有在「物理寬度」改變(手機旋轉)時，才允許重算模型比例！
+            // 徹底阻斷 Android 鍵盤彈出造成的錯誤 Resize 壓縮人物！
+            if (window.innerWidth !== window.physicalWidth) {
+                setTimeout(() => updateLive2DScale(live2dModelInstance), 100);
+            }
         }
     });
 
@@ -2713,60 +2717,120 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // =======================================================
-    // 🌟 手機版終極防呆：虛擬鍵盤頂起時保護頂部導航列與側邊欄 (終極修復版)
+    // 🌟 手機版終極防呆：動態視口高度校準 (解決網址列吃高度問題)
     // =======================================================
-    if (window.visualViewport) {
+    const syncRealHeight = () => {
+        const realHeight = window.innerHeight;
+        // 讓普通模式與全域畫布跟隨
+        document.documentElement.style.setProperty('--app-height', `${realHeight}px`);
+        // 強迫 Live2D 專用的變數也乖乖跟著網址列更新！
+        document.documentElement.style.setProperty('--physical-height', `${realHeight}px`);
+    };
+    window.addEventListener('resize', syncRealHeight);
+    syncRealHeight(); 
+
+    // =======================================================
+    // 🌟 手機版終極防呆：PWA 動態高度 (完美同步 FLIP 引擎)
+    // =======================================================
+    window.lastVvHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+
+    const setAppHeight = () => {
+        const vv = window.visualViewport;
+        if (!vv) return;
+
+        const newHeight = vv.height;
+        const deltaY = window.lastVvHeight - newHeight;
+
+        const targets = [
+            document.getElementById('chat-history'),
+            document.querySelector('.input-container'),
+            document.getElementById('live2d-stage-container'),
+            document.querySelector('.live2d-dashboard'),
+            document.getElementById('live2d-speech-bubble')
+        ].filter(e => e);
+
+        targets.forEach(el => el.classList.add('flip-anim-target'));
+
+        if (Math.abs(deltaY) > 40 && window.innerWidth <= 768) {
+            document.documentElement.style.setProperty('--kb-offset', `${deltaY}px`);
+            targets.forEach(el => { el.classList.remove('kb-animating'); el.classList.add('kb-setup'); });
+
+            document.documentElement.style.setProperty('--app-height', `${newHeight}px`);
+
+            if (currentMode === 'chat') {
+                dom.chatHistory.scrollTop = dom.chatHistory.scrollHeight;
+            } else if (currentMode === 'live2d' && window.live2dModelInstance) {
+                updateLive2DScale(window.live2dModelInstance);
+            }
+
+            void document.documentElement.offsetHeight;
+
+            targets.forEach(el => { el.classList.remove('kb-setup'); el.classList.add('kb-animating'); });
+            document.documentElement.style.setProperty('--kb-offset', `0px`);
+
+            clearTimeout(window.kbAnimTimer);
+            window.kbAnimTimer = setTimeout(() => {
+                targets.forEach(el => el.classList.remove('kb-animating'));
+            }, 380);
+        } else {
+            document.documentElement.style.setProperty('--app-height', `${newHeight}px`);
+            if (currentMode === 'chat') {
+                dom.chatHistory.scrollTop = dom.chatHistory.scrollHeight;
+            }
+        }
+
+        window.lastVvHeight = newHeight;
+
+        // 🔒 終極鎖死導航列：只針對 iOS 進行推擠抵銷，Android 絕對不碰！
         const header = document.getElementById('app-header');
         const sidebar = document.getElementById('sidebar');
-        const inputContainer = document.querySelector('.input-container');
-        const l2dDashboard = document.querySelector('.live2d-dashboard');
+        const isAndroid = /Android/i.test(navigator.userAgent);
 
-        const adjustForKeyboard = () => {
-            const vv = window.visualViewport;
-            const layoutHeight = document.documentElement.clientHeight;
-            
-            // 🌟 核心黑魔法：分辨 iOS 與 Android 的鍵盤行為差異
-            // iOS: 鍵盤彈出時，layout 不縮小但 visual 縮小，產生差值 (pushUpHeight)
-            // Android: 鍵盤彈出時，layout 直接縮小，差值為 0
-            const pushUpHeight = Math.max(0, layoutHeight - vv.height);
-            
-            // 取得目前的裝置預設 bottom 值 (因應手機與電腦版不同)
-            const isMobile = window.innerWidth <= 768;
-            const originalL2dBottom = isMobile ? 30 : 50; 
-            
-            // 🌟 防護 1：主動把底部的輸入容器「抬高」！
-            // 這樣 iOS 就不會因為輸入框被遮擋，而強制把整個網頁推到螢幕外！
-            if (inputContainer) inputContainer.style.bottom = `${pushUpHeight}px`;
-            if (l2dDashboard) l2dDashboard.style.bottom = `${pushUpHeight + originalL2dBottom}px`; 
-            
-            // 🌟 防護 2：雙重鎖定頂部導航列
-            // offsetTop 負責處理 Android 的平移模式
-            const targetTop = Math.max(0, vv.offsetTop);
-            if (header) header.style.top = `${targetTop}px`;
-            if (sidebar) sidebar.style.top = `${targetTop}px`;
+        if (!isAndroid) {
+            // iOS 專屬：精準抵銷 Safari 的暴力平移
+            const offsetTop = vv.offsetTop;
+            if (offsetTop > 0) window.scrollTo(0, 0);
+            if (header) header.style.transform = `translate3d(0, ${offsetTop}px, 0)`;
+            if (sidebar) sidebar.style.top = `${offsetTop}px`;
+        } else {
+            // 🌟 致命修復：Android 鍵盤絕不平移視窗，強制將導航列死死焊在 0 座標！
+            if (header) header.style.transform = `translate3d(0, 0, 0)`;
+        }
+    };
 
-            // 🌟 防護 3：強制壓回 iOS 偷偷加上去的滾動偏移
-            if (pushUpHeight > 0) {
-                window.scrollTo(0, 0); 
-                if (currentMode === 'chat') {
-                    setTimeout(smoothScrollToBottom, 50);
-                }
+    if (window.visualViewport) {
+        let isUpdating = false;
+        const onViewportChange = () => {
+            if (!isUpdating) {
+                isUpdating = true;
+                requestAnimationFrame(() => { setAppHeight(); isUpdating = false; });
             }
         };
+        window.visualViewport.addEventListener('resize', onViewportChange);
+        window.visualViewport.addEventListener('scroll', onViewportChange);
+    }
+    
+    window.addEventListener('resize', setAppHeight);
+    setAppHeight();
 
-        // 綁定極高頻率的視口追蹤，確保緊緊咬住鍵盤的彈出與收合動畫
-        window.visualViewport.addEventListener('resize', adjustForKeyboard);
-        window.visualViewport.addEventListener('scroll', adjustForKeyboard);
-        
-        // 綁定所有輸入框，在手指點擊的瞬間預先啟動防護
-        const inputs = document.querySelectorAll('input, textarea');
-        inputs.forEach(inp => {
-            inp.addEventListener('focus', () => setTimeout(adjustForKeyboard, 50));
-            inp.addEventListener('blur', () => setTimeout(adjustForKeyboard, 50));
+    const inputs = document.querySelectorAll('input, textarea');
+    inputs.forEach(inp => {
+        inp.addEventListener('focus', () => {
+            setTimeout(() => {
+                window.scrollTo(0, 0);
+                if (currentMode === 'chat') dom.chatHistory.scrollTop = dom.chatHistory.scrollHeight;
+            }, 80);
         });
-        
-        // 初始化校正
-        adjustForKeyboard();
+    });
+
+    // =======================================================
+    // 🌟 UI 升級：將「語言選單」收編進「左側島嶼」架構中
+    // 這樣完全不影響原本功能，但能讓 CSS 將它們優雅地包在同一個島嶼內！
+    // =======================================================
+    const headerLeft = document.querySelector('.header-left');
+    const langContainer = document.querySelector('.lang-container');
+    if (headerLeft && langContainer) {
+        headerLeft.appendChild(langContainer);
     }
 
-}); // 👈 這是你原本 main.js 最底部的右括號 (請確保它包在最外面)
+}); // 👈 這是 main.js 最底部的右括號 (覆蓋到這裡結束！)
