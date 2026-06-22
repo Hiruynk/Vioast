@@ -1912,3 +1912,410 @@ body:has(#view-live2d:not(.l2d-hidden)) #app-header .nav-buttons button.active {
        這樣側邊欄打開時，黑色遮罩會完美覆蓋整個導航欄，白光瞬間消失！*/
     z-index: 999 !important; 
 }
+
+/* ==========================================
+   🍎 Apple VisionOS 頂級液態玻璃特效 (專屬 Live2D 模式)
+========================================== */
+
+/* 1. 淺色模式 (Light Mode) 的純淨透光玻璃 */
+body:has(#view-live2d:not(.l2d-hidden)) .header-left,
+body:has(#view-live2d:not(.l2d-hidden)) #app-header .nav-buttons,
+.live2d-dashboard,
+.l2d-floating-btn,
+.l2d-history-panel { /* 👈 將歷史紀錄面板與懸浮按鈕也加入液態玻璃行列 */
+    background: rgba(255, 255, 255, 0.45) !important;
+    backdrop-filter: blur(28px) saturate(180%) !important; 
+    -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.6) !important;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12), inset 0 1px 2px rgba(255, 255, 255, 0.9) !important;
+}
+
+/* 2. 深色模式 (Dark Mode) 的深邃黑曜石玻璃 */
+[data-theme="dark"] body:has(#view-live2d:not(.l2d-hidden)) .header-left,
+[data-theme="dark"] body:has(#view-live2d:not(.l2d-hidden)) #app-header .nav-buttons,
+[data-theme="dark"] .live2d-dashboard,
+[data-theme="dark"] .l2d-floating-btn,
+[data-theme="dark"] .l2d-history-panel { 
+    background: rgba(30, 30, 32, 0.55) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+}
+
+/* 深色模式：跟隨系統設定的自動判斷 */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) body:has(#view-live2d:not(.l2d-hidden)) .header-left,
+    :root:not([data-theme="light"]) body:has(#view-live2d:not(.l2d-hidden)) #app-header .nav-buttons,
+    :root:not([data-theme="light"]) .live2d-dashboard,
+    :root:not([data-theme="light"]) .l2d-floating-btn,
+    :root:not([data-theme="light"]) .l2d-history-panel {
+        background: rgba(30, 30, 32, 0.55) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+    }
+}
+
+/* ==========================================
+   🌟 修正 Live2D 輸入框深色模式下的文字清晰度
+========================================== */
+#l2d-chat-input::placeholder {
+    color: var(--text-color) !important;
+    opacity: 0.5 !important;
+}
+#l2d-chat-input {
+    color: var(--text-color) !important;
+}
+
+/* ==========================================
+   🌟 修正 Live2D 歷史紀錄名字與內容文字的顏色層次 (內容主角版)
+========================================== */
+
+/* 1. 💬 對話內容文字區塊 (主角)：強制使用 100% 高亮純色，讓對話內容最醒目 */
+.l2d-log-text {
+    font-size: 15px !important; /* 稍微把對話字體放大一點，確立視覺主角地位 */
+    line-height: 1.5 !important;
+    
+    /* 🍏 內容使用系統文字原色，保持 1.0 完美高亮 */
+    color: var(--text-color) !important;
+    opacity: 1.0 !important; 
+}
+
+/* 🔒 確保深色模式液態玻璃下，內容文字依然保持 1.0 最高亮度 */
+[data-theme="dark"] .l2d-log-text {
+    color: var(--text-color) !important;
+    opacity: 1.0 !important;
+}
+
+/* 2. 👤 名字區塊 (配角)：調低透明度與字重，呈現高級的 Apple 附註標籤質感 */
+.l2d-log-role { 
+    font-size: 12px !important; /* 稍微縮小字體，強化次要資訊的感覺 */
+    font-weight: 600 !important; /* 把極粗體改為半粗體，減少視覺重量 */
+    margin-bottom: 4px !important; 
+    letter-spacing: 0.5px !important;
+    
+    /* 🍏 名字調低透明度至 0.6，退居幕後不搶戲 */
+    color: var(--text-color) !important; 
+    opacity: 0.6 !important; 
+}
+
+/* 🔒 強制鎖死「你」和「Hiyori」的名字在任何主題下都是次要亮度 */
+.l2d-log-item.log-user .l2d-log-role,
+[data-theme="dark"] .l2d-log-item:not(.log-user) .l2d-log-role {
+    color: var(--text-color) !important;
+    opacity: 0.6 !important;
+}
+/* ==========================================
+   🍏 Live2D 膠囊島按鈕微互動 (修正語音模式發送鍵隱藏殘影)
+========================================== */
+/* 1. 預設狀態：徹底拔除藍色與黑色圓形底色，只保留 SVG */
+.l2d-action-btn {
+    width: 38px !important; height: 38px !important;
+    padding: 0 !important; margin: 0 !important;
+    border-radius: 50% !important;
+    display: flex !important; align-items: center !important; justify-content: center !important;
+    box-sizing: border-box !important;
+    
+    background-color: transparent !important;
+    border: 1px solid transparent !important;
+    color: var(--text-color) !important;
+    
+    /* 增加 width 變更的過渡動畫，讓紙飛機消失時麥克風右移更絲滑 */
+    transition: background-color 0.2s, border-color 0.2s, transform 0.2s, color 0.2s, width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), margin 0.3s !important;
+}
+
+/* 2. 輕放 (Hover) 與點擊 (Active) 狀態 */
+.l2d-action-btn:hover {
+    background-color: var(--input-bg) !important;
+    border: 1px solid rgba(128, 128, 128, 0.1) !important;
+}
+.l2d-action-btn:active {
+    background-color: var(--border-color) !important;
+    transform: scale(0.92) !important;
+}
+
+/* 3. 錄音中狀態 (Recording) */
+.l2d-action-btn.mic-btn.recording {
+    background-color: #ff3b30 !important;
+    color: white !important;
+    animation: l2dPulse 1.4s infinite !important;
+}
+.l2d-action-btn.mic-btn.recording:active {
+    transform: scale(1.15) !important;
+}
+
+/* 4. 🔒 核心致命修復：當發送按鈕被 JS 加上隱藏 Class 時，強迫其寬度與間距瞬間歸零，釋放右側空間 */
+#l2d-send-btn.pop-hidden,
+#l2d-send-btn.hidden {
+    width: 0 !important;
+    height: 38px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    opacity: 0 !important;
+    transform: scale(0) !important;
+    border: none !important;
+    pointer-events: none !important;
+    overflow: hidden !important;
+}
+
+/* ==========================================
+   🍎 終極完美修復：普通模式上傳選單 (#upload-popup) 注入液態玻璃
+========================================== */
+
+/* 1. 淺色模式下的晶瑩毛玻璃外殼 */
+#upload-popup,
+.upload-popup {
+    background: rgba(255, 255, 255, 0.45) !important;
+    backdrop-filter: blur(28px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+    
+    /* 🍏 蘋果官方標誌性細高光切割邊緣 */
+    border: 1px solid rgba(255, 255, 255, 0.6) !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), inset 0 1px 2px rgba(255, 255, 255, 0.9) !important;
+    
+    border-radius: 20px !important;
+    padding: 6px 10px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+}
+
+/* 2. 深色模式下的黑曜石液態玻璃 */
+[data-theme="dark"] #upload-popup,
+[data-theme="dark"] .upload-popup {
+    background: rgba(30, 30, 32, 0.55) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+}
+
+/* 3. 自動跟隨系統深色主題 */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) #upload-popup,
+    :root:not([data-theme="light"]) .upload-popup {
+        background: rgba(30, 30, 32, 0.55) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+    }
+}
+
+/* 4. 徹底剝離內部選項 (.upload-option) 原本生硬的實色底 */
+.upload-option {
+    background-color: transparent !important;
+    border: 1px solid transparent !important;
+    color: var(--text-color) !important;
+    border-radius: 14px !important;
+    transition: background-color 0.2s, transform 0.2s !important;
+}
+
+/* 5. 移上去時的微透亮動態反饋 */
+.upload-option:hover {
+    background-color: rgba(128, 128, 128, 0.15) !important;
+}
+[data-theme="dark"] .upload-option:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+.upload-option:active {
+    transform: scale(0.95) !important;
+}
+
+/* ==========================================
+   🍏 終極統一：普通模式發送按鈕 (#chat-send) 拔除圓圈與尺寸同步
+========================================== */
+
+/* 1. 徹底剝離原本 .send-btn 強制的實黑/實白底色，回歸純淨透明 */
+#chat-send {
+    background-color: transparent !important;
+    color: var(--text-color) !important;
+    border: 1px solid transparent !important;
+    box-shadow: none !important;
+    transition: background-color 0.2s, transform 0.2s !important;
+}
+
+/* 2. 強制統一紙飛機 SVG/字體大小，和 Live2D 模式完全一致 (22px) */
+#chat-send svg,
+#chat-send i {
+    width: 22px !important;
+    height: 22px !important;
+    font-size: 22px !important;
+    
+    /* 🍏 光學置中修正：紙飛機的視覺重心通常偏右上，稍微往左下方微調，讓它在隱形圓圈內完美居中 */
+    transform: translate(-2px, 1px) !important; 
+}
+
+/* 3. 加入與 [+] 號完全一致的蘋果級微互動 (Hover / Active) */
+#chat-send:hover {
+    background-color: var(--input-bg) !important;
+}
+
+#chat-send:active {
+    background-color: var(--border-color) !important;
+    transform: scale(0.9) !important; /* 點擊時的 Q 彈微縮感 */
+}
+
+/* ==========================================
+   🏝️ 智慧模式分流：上傳選單 (#upload-popup) 材質自動變色引擎
+========================================== */
+
+/* ------------------------------------------
+   🔘 狀態 A：普通對話模式 (實心氣泡面板，移除液態玻璃)
+------------------------------------------ */
+#upload-popup,
+.upload-popup {
+    /* 預設回歸實心主題色，淺色純白，深色深灰 */
+    background: var(--modal-bg) !important; 
+    
+    /* 物理閹割玻璃特效 */
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    
+    /* 標準實體邊框與清爽陰影 */
+    border: 1px solid var(--border-color) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+    
+    border-radius: 20px !important;
+    padding: 6px 10px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+}
+
+/* 深色模式實心外殼 */
+[data-theme="dark"] #upload-popup,
+[data-theme="dark"] .upload-popup {
+    background: var(--modal-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) #upload-popup,
+    :root:not([data-theme="light"]) .upload-popup {
+        background: var(--modal-bg) !important;
+        border: 1px solid var(--border-color) !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+    }
+}
+
+/* ------------------------------------------
+   🍏 狀態 B：Live2D 模式 (自動激活 Apple VisionOS 頂級液態玻璃)
+------------------------------------------ */
+body:has(#view-live2d:not(.l2d-hidden)) #upload-popup,
+body:has(#view-live2d:not(.l2d-hidden)) .upload-popup {
+    /* 淺色玻璃：45% 透明度 */
+    background: rgba(255, 255, 255, 0.45) !important;
+    backdrop-filter: blur(28px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+    
+    /* 蘋果標誌性微細高光切割線與內反射 */
+    border: 1px solid rgba(255, 255, 255, 0.6) !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), inset 0 1px 2px rgba(255, 255, 255, 0.9) !important;
+}
+
+/* 深色玻璃：黑曜石流體質地 */
+[data-theme="dark"] body:has(#view-live2d:not(.l2d-hidden)) #upload-popup,
+[data-theme="dark"] body:has(#view-live2d:not(.l2d-hidden)) .upload-popup {
+    background: rgba(30, 30, 32, 0.55) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) body:has(#view-live2d:not(.l2d-hidden)) #upload-popup,
+    :root:not([data-theme="light"]) body:has(#view-live2d:not(.l2d-hidden)) .upload-popup {
+        background: rgba(30, 30, 32, 0.55) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+    }
+}
+
+/* ------------------------------------------
+   ✨ 共享按鈕微互動 (內部選項樣式剝離)
+------------------------------------------ */
+.upload-option {
+    background-color: transparent !important;
+    border: 1px solid transparent !important;
+    color: var(--text-color) !important;
+    border-radius: 14px !important;
+    transition: background-color 0.2s, transform 0.2s !important;
+}
+.upload-option:hover {
+    background-color: rgba(128, 128, 128, 0.15) !important;
+}
+[data-theme="dark"] .upload-option:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+.upload-option:active {
+    transform: scale(0.95) !important;
+}
+
+/* ==========================================
+   🧱 Live2D 模式專屬：模型與語言下拉選單液態玻璃化 (VisionOS Fluid Glass)
+========================================== */
+
+/* ─── 🌟 獨立修正：僅在 Live2D 模式下加深頂部觸發按鈕與箭頭 ─── */
+body:has(#view-live2d:not(.l2d-hidden)) .model-dropdown-btn {
+    opacity: 1 !important;        /* 預設不透明度由 0.7 提升至 1，確保完全清晰 */
+    font-weight: 600 !important;
+}
+body:has(#view-live2d:not(.l2d-hidden)) .model-dropdown-btn .chevron {
+    opacity: 0.95 !important;     /* 箭頭不透明度由 0.6 提升至 0.95 */
+}
+
+/* ─── 1. 淺色模式 (Light Mode) 玻璃面板與文字 ─── */
+body:has(#view-live2d:not(.l2d-hidden)) .custom-dropdown-menu {
+    /* 淺色玻璃：45% 透明度與 28px 超高飽和度折射 */
+    background: rgba(255, 255, 255, 0.45) !important;
+    backdrop-filter: blur(28px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+    
+    /* 蘋果標誌性微細高光切割線與內反射 */
+    border: 1px solid rgba(255, 255, 255, 0.6) !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), inset 0 1px 2px rgba(255, 255, 255, 0.9) !important;
+}
+/* 🌟 淺色玻璃專屬文字加深：防止半透明白底吃掉字體 */
+body:has(#view-live2d:not(.l2d-hidden)) .custom-dropdown-menu .dropdown-item {
+    color: #111111 !important;     /* 使用極深色提高主標題對比度 */
+    font-weight: 550 !important;
+}
+body:has(#view-live2d:not(.l2d-hidden)) .custom-dropdown-menu .dropdown-item .item-desc {
+    color: #555555 !important;     /* 將原本模糊的 gray 改為深灰，確保描述清晰 */
+}
+
+/* ─── 2. 深色模式 (Dark Mode) 黑曜石流體質地與文字 ─── */
+[data-theme="dark"] body:has(#view-live2d:not(.l2d-hidden)) .custom-dropdown-menu {
+    background: rgba(30, 30, 32, 0.55) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+}
+/* 🌟 深色玻璃專屬文字優化：使用高亮度對比 */
+[data-theme="dark"] body:has(#view-live2d:not(.l2d-hidden)) .custom-dropdown-menu .dropdown-item {
+    color: #ffffff !important;     /* 純白主文字 */
+    font-weight: 550 !important;
+}
+[data-theme="dark"] body:has(#view-live2d:not(.l2d-hidden)) .custom-dropdown-menu .dropdown-item .item-desc {
+    color: #b3b3b3 !important;     /* 明亮灰副文字 */
+}
+
+/* 深色模式：系統預設自動判斷（防止主題未載入時的閃爍） */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) body:has(#view-live2d:not(.l2d-hidden)) .custom-dropdown-menu {
+        background: rgba(30, 30, 32, 0.55) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+    }
+    /* 🌟 系統深色模式文字同步加深優化 */
+    :root:not([data-theme="light"]) body:has(#view-live2d:not(.l2d-hidden)) .custom-dropdown-menu .dropdown-item {
+        color: #ffffff !important;
+        font-weight: 550 !important;
+    }
+    :root:not([data-theme="light"]) body:has(#view-live2d:not(.l2d-hidden)) .custom-dropdown-menu .dropdown-item .item-desc {
+        color: #b3b3b3 !important;
+    }
+}
+
+/* ─── 3. 下拉選單內部選項 (Dropdown Items) 微互動優化 ─── */
+body:has(#view-live2d:not(.l2d-hidden)) .custom-dropdown-menu .dropdown-item {
+    background-color: transparent !important;
+    transition: background-color 0.2s ease !important;
+}
+
+/* 核心修正：滑鼠懸停時改用 15% 透明白/黑遮罩，不與下層毛玻璃背景衝突，維持通透感 */
+body:has(#view-live2d:not(.l2d-hidden)) .custom-dropdown-menu .dropdown-item:hover {
+    background-color: rgba(128, 128, 128, 0.15) !important;
+}
