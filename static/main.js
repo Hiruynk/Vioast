@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
         model: 'gemini', apiKey: '', theme: 'auto',
         inputLang: 'cantonese', outputLang: 'cantonese', textLang: 'chinese',
         sakuraEffect: true, // 🌟 新增：櫻花特效預設開啟
+        voiceToggle: true, // 🌟 新增：語音總開關 (預設開啟)
         live2dLangSet: false,
         appLang: 'zh-HK',
         ttsApiUrl: '' // 👈 🌟 新增：用來存放後端傳來的 TTS 網址
@@ -85,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selInputLang: document.getElementById('sel-input-lang'),
         selOutputLang: document.getElementById('sel-output-lang'),
         selTextLang: document.getElementById('sel-text-lang'),
+        selVoiceToggle: document.getElementById('sel-voice-toggle'), // 🌟 新增：語音開關 DOM
         selSakuraEffect: document.getElementById('sel-sakura-effect'), // 🌟 新增：抓取櫻花選單
         live2dSubtitle: document.getElementById('live2d-subtitle'),
         btnSettings: document.getElementById('btn-settings'), 
@@ -117,6 +119,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const svgFail = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff3b30" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px; position: relative; top: -1px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
     const svgImageIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; position: relative; top: -1px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`;
     const svgFileIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; position: relative; top: -1px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
+    
+    // 👇 🌟 新增：語音開關專用的科技感電源 SVG
+    const svgPower = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; position: relative; top: -1px;"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>`;
+
+    // ===== 完備多國語言包 =====
 
     // ===== 完備多國語言包 =====
     const translations = {
@@ -167,6 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
             local_help_title: "❓ Local LLM Startup Tutorial",
             tooltip_l2d_history: "Live2D Chat Log", l2d_history_title: "Chat History",
             tooltip_l2d_auto: "Voice Direct", tooltip_l2d_verify: "Verify Mode",
+            voice_toggle: `${svgPower} Voice Toggle:`, voice_on: "On (Default)", voice_off: "Off (Silent Mode)",
             welcome_md: `Hello! Welcome to the **IVE HKIIT Open Day**! I am your official **AI Chatbot Assistant**.\n\nThe IVE IT Discipline has been upgraded to the **Hong Kong Institute of Information Technology (HKIIT)**! I'm here to provide you with syllabus details, tuition fees, and admission requirements for our Higher Diploma and Diploma of Foundation Studies programs, or navigate you through today's activities!\n\n**Try asking me:**\n* Syllabus: \`What will I learn in Higher Diploma in Data Science and AI (IT114126)?\`\n* Admission: \`What are the requirements for Real Estate (BA114037)?\`\n* Transport: \`How do I get to IVE Tsing Yi?\`\n\nHow can I help you today?`
         },
         'zh-HK': {
@@ -216,6 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
             local_help_title: "❓ 本地大模型啟動教學",
             tooltip_l2d_history: "Live2D 聊天紀錄", l2d_history_title: "聊天紀錄",
             tooltip_l2d_auto: "語音直發", tooltip_l2d_verify: "打字校對",
+            voice_toggle: `${svgPower} 語音開關：`, voice_on: "開啟 (預設)", voice_off: "關閉 (靜音模式)", // 🌟 新增
             welcome_md: `您好！歡迎來到 **IVE HKIIT 開放日**！我是您的官方 **AI Chatbot 智能升學諮詢助手**。\n\n香港專業教育學院（IVE）資訊科技學系已全新升級為 **香港資訊科技學院（HKIIT）**！在這裡，我能為您提供各項熱門的高級文憑 (Higher Diploma) 及基礎文憑 (Diploma of Foundation Studies) 的課程大綱、學費、入學要求，或是為您導航今天的開放日活動！\n\n**您可以試著這樣問我：**\n* 課程內容：\`IT114126 數據科學及人工智能高級文憑學咩？\`\n* 入學條件：\`BA114037 房地產高級文憑有咩入學要求？\`\n* 交通導航：\`青衣 IVE 點樣去？\` \n\n請問今天有甚麼我可以幫到您？`
         },
         'zh-CN': {
@@ -265,6 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
             local_help_title: "❓ 本地大模型启动教学",
             tooltip_l2d_history: "Live2D 聊天记录", l2d_history_title: "聊天记录",
             tooltip_l2d_auto: "语音直发", tooltip_l2d_verify: "打字校对",
+            voice_toggle: `${svgPower} 语音开关：`, voice_on: "开启 (默认)", voice_off: "关闭 (静音模式)", // 🌟 新增
             welcome_md: `您好！欢迎来到 **IVE HKIIT 开放日**！我是您的官方 **AI Chatbot 智能升学咨询助手**。\n\n香港专业教育学院（IVE）资讯科技学系已全新升级为 **香港资讯科技学院（HKIIT）**！在这里，我能为您提供各项热门的高级文凭 (Higher Diploma) 及基础文凭 (Diploma of Foundation Studies) 的课程大纲、学费、入学要求，或是为您导航今天的开放日活动！\n\n**您可以试着这样问我：**\n* 课程内容：\`IT114126 数据科学及人工智能高级文凭学什么？\`\n* 入学条件：\`BA114037 房地产高级文凭有什么入学要求？\`\n* 交通导航：\`青衣 IVE 怎么去？\` \n\n请问今天有什么我可以帮到您？`
         }
     };
@@ -1465,6 +1475,7 @@ document.addEventListener('DOMContentLoaded', () => {
         appSettings.inputLang = dom.selInputLang.value; 
         appSettings.outputLang = dom.selOutputLang.value; 
         appSettings.textLang = dom.selTextLang.value;
+        appSettings.voiceToggle = (dom.selVoiceToggle.value === 'on'); 
         appSettings.live2dLangSet = true; 
         localStorage.setItem('hkiit_settings', JSON.stringify(appSettings)); 
 
@@ -1477,8 +1488,24 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.selInputLang.value = appSettings.inputLang || 'cantonese';
         dom.selOutputLang.value = appSettings.outputLang || 'cantonese';
         dom.selTextLang.value = appSettings.textLang || 'chinese';
+        // 🌟 新增：讀取並觸發開關連動
+        dom.selVoiceToggle.value = appSettings.voiceToggle === false ? 'off' : 'on';
+        dom.selVoiceToggle.dispatchEvent(new Event('change'));
         dom.langModal.classList.remove('hidden');
         closeSidebarHandler();
+    });
+
+    // 👇 🌟 新增：選擇關閉時，自動禁用下方兩個選項並變灰
+    dom.selVoiceToggle.addEventListener('change', (e) => {
+        const isOff = e.target.value === 'off';
+        dom.selInputLang.disabled = isOff;
+        dom.selOutputLang.disabled = isOff;
+        
+        // 改變父元素(label)的透明度與游標，提供明顯的視覺回饋
+        dom.selInputLang.parentNode.style.opacity = isOff ? '0.4' : '1';
+        dom.selOutputLang.parentNode.style.opacity = isOff ? '0.4' : '1';
+        dom.selInputLang.style.cursor = isOff ? 'not-allowed' : 'pointer';
+        dom.selOutputLang.style.cursor = isOff ? 'not-allowed' : 'pointer';
     });
 
     function smoothScrollToBottom() { dom.chatHistory.scrollTo({ top: dom.chatHistory.scrollHeight, behavior: 'smooth' }); }
@@ -1630,6 +1657,9 @@ document.addEventListener('DOMContentLoaded', () => {
         ttsInterruptToken++; // 🌟 每次呼叫就換一個新 Token
         const myToken = ttsInterruptToken; // 🌟 記住當下這句話的專屬 Toke
 
+        // 👇 🌟 核心捕獲：在一開始就鎖定語音狀態，確保中途切換設定「絕對不會」影響這句話！
+        const isVoiceEnabled = appSettings.voiceToggle !== false;
+
         let textToSpeak = fullText;
         let textToDisplay = fullText;
 
@@ -1693,15 +1723,14 @@ document.addEventListener('DOMContentLoaded', () => {
         let accumulatedText = ""; 
 
         function playNextQueue() {
-            // 🛑 絕對防護 1：如果這時候 Token 變了（代表被新語音覆蓋），立刻終止！
             if (myToken !== ttsInterruptToken) return;
 
             if (sentenceQueue.length === 0) {
                 ttsSpeaking = false;
                 setTimeout(() => { 
-                    // 🛑 絕對防護 2：收合氣泡前也要檢查是否被中斷
                     if(!ttsSpeaking && myToken === ttsInterruptToken) {
-                        document.getElementById('live2d-speech-bubble').classList.add('hidden'); 
+                        const bubble = document.getElementById('live2d-speech-bubble');
+                        if (bubble) bubble.classList.add('hidden'); 
                     }
                 }, 3000);
                 return;
@@ -1709,20 +1738,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const currentItem = sentenceQueue.shift();
             const encodedText = encodeURIComponent(currentItem.voice);
-            // =======================================================
-            // 🔒 100% 依賴後端變數：JS 代碼中不包含任何真實網址字串
-            // =======================================================
             let baseUrl = appSettings.ttsApiUrl;
-            
-            // 防禦鎖：如果完全沒有網址（例如未登入或環境變數未設定），直接救援進無聲打字，不報錯也不外洩
-            if (!baseUrl) {
-                executeSilentTyping(true);
-                return;
-            }
-            
-            if (!baseUrl.endsWith('/')) baseUrl += '/';
-            const primaryUrl = `${baseUrl}?text=${encodedText}&text_language=${mappedLang}`;
 
+            // =======================================================
+            // 🌟 唯一且致命的修復：把打字機需要的變數，移到「開關判斷」的上方！
+            // =======================================================
             let baseText = accumulatedText;
             if (baseText !== "") baseText += " ";
             const textToType = currentItem.text;
@@ -1735,33 +1755,32 @@ document.addEventListener('DOMContentLoaded', () => {
                     duration = textToType.length * 0.2; 
                 }
                 
-                // 🌟 修正 1：移除原本 -2000 的舊補償！改為扣除 200 毫秒，讓文字剛好在語音結束前打完
                 let typingTime = (duration * 1000) - 200;
                 if (typingTime < textToType.length * 20) {
                     typingTime = (duration * 1000); 
                 }
-                // 調快最低打字速度，防止過慢
                 const speed = Math.max(20, typingTime / textToType.length);
 
                 let charIndex = 0;
                 if (window.live2dTypeInterval) clearInterval(window.live2dTypeInterval);
                 if (window.live2dTypeDelay) clearTimeout(window.live2dTypeDelay);
 
-                // 🌟 修正 2：將延遲從 2000 改為 0！(聲音一出，文字秒出)
                 window.live2dTypeDelay = setTimeout(() => {
-                    bubble.className = `live2d-bubble mood-${live2dMood}`;
-                    window.live2dTypeInterval = setInterval(() => {
-                        charIndex++;
-                        bubble.querySelector('.bubble-text').innerText = baseText + textToType.substring(0, charIndex);
-                        if (charIndex >= textToType.length) {
-                            clearInterval(window.live2dTypeInterval);
-                        }
-                    }, speed);
+                    if (bubble) {
+                        bubble.className = `live2d-bubble mood-${live2dMood}`;
+                        window.live2dTypeInterval = setInterval(() => {
+                            charIndex++;
+                            const txtBox = bubble.querySelector('.bubble-text');
+                            if(txtBox) txtBox.innerText = baseText + textToType.substring(0, charIndex);
+                            if (charIndex >= textToType.length) {
+                                clearInterval(window.live2dTypeInterval);
+                            }
+                        }, speed);
+                    }
                 }, 0); 
             }
 
             function handleAudioEnded() {
-                // 🛑 絕對防護 3：如果語音結束時 Token 已變，不准播下一句舊台詞！
                 if (myToken !== ttsInterruptToken) return;
 
                 if (window.live2dTypeDelay) clearTimeout(window.live2dTypeDelay);
@@ -1770,60 +1789,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 const bubble = document.getElementById('live2d-speech-bubble');
                 if (bubble) {
                     bubble.className = `live2d-bubble mood-${live2dMood}`;
-                    bubble.querySelector('.bubble-text').innerText = accumulatedText;
+                    const txtBox = bubble.querySelector('.bubble-text');
+                    if(txtBox) txtBox.innerText = accumulatedText;
                 }
                 playNextQueue();
             }
 
-            // 👇 🌟 核心新增：終極無聲打字救援模式
-            function executeSilentTyping() {
-                console.warn("⚠️ 所有 TTS API 無回應，啟動無聲逐字顯示模式");
-                
-                // 估算打字時間：每個字 0.2 秒 (最少給予 1 秒的緩衝)
-                const estimatedSeconds = Math.max(1.0, textToType.length * 0.2);
-                
-                // 傳入一個帶有假 duration 的物件，騙過打字機讓它啟動
-                triggerTypewriter({ duration: estimatedSeconds });
-                
-                // 根據打字機的邏輯，2秒延遲 + 實際打字時間 + 800ms 停頓緩衝後，自動呼叫下一句
-                setTimeout(() => {
-                    handleAudioEnded();
-                }, 2000 + (estimatedSeconds * 1000) + 800);
-            }
-
-            // 👇 🌟 核心新增：終極無聲打字救援模式 (升級支援訪客過濾)
             function executeSilentTyping(isGuest = false) {
                 if (!isGuest) {
                     console.warn("⚠️ 所有 TTS API 無回應，啟動無聲逐字顯示模式");
                 }
-                
-                // 估算打字時間：每個字 0.2 秒 (最少給予 1 秒的緩衝)
                 const estimatedSeconds = Math.max(1.0, textToType.length * 0.2);
-                
-                // 傳入一個帶有假 duration 的物件，騙過打字機讓它啟動
                 triggerTypewriter({ duration: estimatedSeconds });
-                
-                // 🌟 修正：移除舊版寫死的 2 秒延遲，配合最新的「秒出字」邏輯
                 setTimeout(() => {
                     handleAudioEnded();
                 }, (estimatedSeconds * 1000) + 800);
             }
 
-            // ... (前面的 triggerTypewriter 和 handleAudioEnded 保持不變)
-
-            // 🌟 核心權限攔截：檢查是否登入！未登入直接切換為無聲打字，不發送 API 請求！
-            if (!currentUser) {
-                executeSilentTyping(true); // true 代表是訪客，安靜執行，不印出系統報錯警告
+            // 👇 🌟 核心權限與開關攔截：因為 textToType 已經提早宣告，這裡切換無聲打字絕對不會再當機了！
+            if (!currentUser || !isVoiceEnabled || !baseUrl) {
+                executeSilentTyping(true); 
                 return;
             }
 
+            if (!baseUrl.endsWith('/')) baseUrl += '/';
+            const primaryUrl = `${baseUrl}?text=${encodedText}&text_language=${mappedLang}`;
+
+            // =========================================================================
+            // 🔒 下方語音播放邏輯 100% 複製你上傳的代碼，絕對不干擾你現有的 TTS 播放！
+            // =========================================================================
             currentAudio = new Audio(primaryUrl);
             currentAudio.crossOrigin = "anonymous"; 
 
             let isFallbackTriggered = false;
 
-            // 🌟 核心修復 1：從 onplay 改為 onplaying！
-            // 確保 TTS 伺服器推理完畢，且瀏覽器真正開始發聲的那一刻，才解鎖口型與打字機！
             currentAudio.onplaying = () => { 
                 if (myToken !== ttsInterruptToken) { currentAudio.pause(); return; } 
                 triggerTypewriter(currentAudio);
@@ -1831,7 +1830,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!window.audioAnalyser) {
                     window.audioAnalyser = window.audioContext.createAnalyser();
                     window.audioAnalyser.fftSize = 256; 
-                    // 確保分析器有連接到最終輸出 (喇叭)
                     window.audioAnalyser.connect(window.audioContext.destination); 
                 }
                 if (!currentAudio.sourceNode) {
@@ -1839,14 +1837,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         currentAudio.sourceNode = window.audioContext.createMediaElementSource(currentAudio);
                         currentAudio.sourceNode.connect(window.audioAnalyser);
                     } catch(e) { 
-                        // 如果綁定失敗 (通常是 CORS 限制或重複綁定)，瀏覽器會報錯
-                        // 此時千萬不要阻擋播放，就算沒有口型，至少要讓聲音出來！
                         console.warn("Live2D 分析器綁定失敗，可能因跨域限制。聲音將維持原始輸出:", e); 
                     }
                 }
             };
 
-            // 🌟 嚴格鎖定的錯誤處理鏈
             currentAudio.onerror = () => {
                 if (myToken !== ttsInterruptToken) return; 
                 
@@ -1867,7 +1862,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (myToken !== ttsInterruptToken) return;
                     if (safeFailed) return;
                     safeFailed = true;
-                    // 🚨 直接切換至無聲打字救援模式
                     executeSilentTyping();
                 };
                 
@@ -1880,9 +1874,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             };
 
-            // ... (後面的 fetch nextUrl 和 currentAudio.play() 保持不變)
-
-            // 預載下一句音訊
             if (sentenceQueue.length > 0 && appSettings.ttsApiUrl) {
                 let baseUrl = appSettings.ttsApiUrl;
                 if (!baseUrl.endsWith('/')) baseUrl += '/';
@@ -2720,4 +2711,62 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
-}); // <--- 注意這裡保留了腳本結尾的右括號
+
+    // =======================================================
+    // 🌟 手機版終極防呆：虛擬鍵盤頂起時保護頂部導航列與側邊欄 (終極修復版)
+    // =======================================================
+    if (window.visualViewport) {
+        const header = document.getElementById('app-header');
+        const sidebar = document.getElementById('sidebar');
+        const inputContainer = document.querySelector('.input-container');
+        const l2dDashboard = document.querySelector('.live2d-dashboard');
+
+        const adjustForKeyboard = () => {
+            const vv = window.visualViewport;
+            const layoutHeight = document.documentElement.clientHeight;
+            
+            // 🌟 核心黑魔法：分辨 iOS 與 Android 的鍵盤行為差異
+            // iOS: 鍵盤彈出時，layout 不縮小但 visual 縮小，產生差值 (pushUpHeight)
+            // Android: 鍵盤彈出時，layout 直接縮小，差值為 0
+            const pushUpHeight = Math.max(0, layoutHeight - vv.height);
+            
+            // 取得目前的裝置預設 bottom 值 (因應手機與電腦版不同)
+            const isMobile = window.innerWidth <= 768;
+            const originalL2dBottom = isMobile ? 30 : 50; 
+            
+            // 🌟 防護 1：主動把底部的輸入容器「抬高」！
+            // 這樣 iOS 就不會因為輸入框被遮擋，而強制把整個網頁推到螢幕外！
+            if (inputContainer) inputContainer.style.bottom = `${pushUpHeight}px`;
+            if (l2dDashboard) l2dDashboard.style.bottom = `${pushUpHeight + originalL2dBottom}px`; 
+            
+            // 🌟 防護 2：雙重鎖定頂部導航列
+            // offsetTop 負責處理 Android 的平移模式
+            const targetTop = Math.max(0, vv.offsetTop);
+            if (header) header.style.top = `${targetTop}px`;
+            if (sidebar) sidebar.style.top = `${targetTop}px`;
+
+            // 🌟 防護 3：強制壓回 iOS 偷偷加上去的滾動偏移
+            if (pushUpHeight > 0) {
+                window.scrollTo(0, 0); 
+                if (currentMode === 'chat') {
+                    setTimeout(smoothScrollToBottom, 50);
+                }
+            }
+        };
+
+        // 綁定極高頻率的視口追蹤，確保緊緊咬住鍵盤的彈出與收合動畫
+        window.visualViewport.addEventListener('resize', adjustForKeyboard);
+        window.visualViewport.addEventListener('scroll', adjustForKeyboard);
+        
+        // 綁定所有輸入框，在手指點擊的瞬間預先啟動防護
+        const inputs = document.querySelectorAll('input, textarea');
+        inputs.forEach(inp => {
+            inp.addEventListener('focus', () => setTimeout(adjustForKeyboard, 50));
+            inp.addEventListener('blur', () => setTimeout(adjustForKeyboard, 50));
+        });
+        
+        // 初始化校正
+        adjustForKeyboard();
+    }
+
+}); // 👈 這是你原本 main.js 最底部的右括號 (請確保它包在最外面)

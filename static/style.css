@@ -34,14 +34,18 @@
 }
 
 /* ==========================================
-   2. 全局基礎
+   2. 全局基礎 與 全介面動態主題過渡
 ========================================== */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body, html {
     position: fixed; height: 100vh; width: 100vw;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background-color: var(--bg-color); color: var(--text-color);
-    transition: background-color 0.3s, color 0.3s;
+    
+    /* 🌟 升級：使用蘋果經典的 0.5 秒流體減速曲線，讓大面積背景色變更時極度柔和 */
+    transition: background-color 0.5s cubic-bezier(0.25, 1, 0.5, 1), 
+                color 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+                
     overflow: hidden; overscroll-behavior-y: none;
     user-select: none; -webkit-tap-highlight-color: transparent;
 }
@@ -49,6 +53,33 @@ body, html {
 .msg-content { user-select: text; }
 ::-webkit-scrollbar { display: none; }
 * { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* 🌟 新增：核心 UI 元件主題變色防閃爍護盾 (全介面同步絲滑漸變) */
+#app-header, 
+.sidebar, 
+.input-box, 
+.live2d-dashboard, 
+.modal-content, 
+.custom-dropdown-menu,
+.dropdown-item,
+.history-item, 
+.msg-content,
+.user-message .msg-content,
+.live2d-bubble,
+.sidebar-action-btn,
+.icon-btn,
+.copy-btn,
+.l2d-floating-btn {
+    /* 將色彩、邊框、陰影的漸變時間同步鎖定為 0.5 秒 */
+    /* 同時完美保留了你原本寫在各處的 transform (Q彈) 與 opacity (淡入淡出) 的動畫權限，絕不衝突 */
+    transition: background-color 0.5s cubic-bezier(0.25, 1, 0.5, 1), 
+                color 0.5s cubic-bezier(0.25, 1, 0.5, 1), 
+                border-color 0.5s cubic-bezier(0.25, 1, 0.5, 1), 
+                box-shadow 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+                transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                opacity 0.25s ease,
+                visibility 0.25s !important;
+}
 
 /* ==========================================
    3. 頂部導航欄 (Header) 與下拉選單
@@ -131,19 +162,45 @@ body, html {
 .nav-buttons button:hover { transform: scale(1.1); background-color: rgba(128, 128, 128, 0.15); }
 
 /* ==========================================
-   4. 側邊欄 (Sidebar)
+   4. 側邊欄 (Sidebar) 與背景遮罩 (60fps 絲滑效能修復版)
 ========================================== */
-/* 修改後 */
 .sidebar {
     position: fixed; top: 0; left: 0; width: 280px; height: 100%;
     background: var(--modal-bg); border-right: 1px solid var(--border-color);
-    z-index: 1000; /* 🌟 從 200 提升至 1000，成為全畫面絕對最高優先級 */
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000; 
     display: flex; flex-direction: column; justify-content: space-between; padding: 20px 15px;
+
+    /* 🌟 修復卡頓 1：將 transform 與色彩過渡分開寫，避免與全域 UI 動畫產生 !important 衝突 */
+    transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1),
+                background-color 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+                border-color 0.5s cubic-bezier(0.25, 1, 0.5, 1) !important;
+    will-change: transform; /* 確保啟用 GPU 加速 */
 }
 .sidebar.closed { transform: translateX(-100%); }
 .sidebar-top { flex: 1; display: flex; flex-direction: column; overflow: visible !important; }
 
+/* ... (中間按鈕設定保持不變) ... */
+
+/* 背景遮罩優化 */
+.overlay { 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0, 0, 0, 0.45); z-index: 150; 
+    
+    /* 🌟 修復卡頓 2：徹底拔除極度消耗 GPU 的 backdrop-filter 毛玻璃特效。
+       這能確保在關閉側邊欄時，瀏覽器不需要每秒重新計算 60 次背景模糊，恢復極致滑順！ */
+    transition: opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1), 
+                visibility 0.4s !important; 
+    will-change: opacity;
+}
+
+/* 🌟 保留隱藏時的防護機制 */
+.sidebar-overlay.overlay.hidden, 
+.overlay.hidden {
+    display: block !important; 
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
 .sidebar-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 24px; }
 .sidebar-brand { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
 .sidebar-app-name { font-size: 18px; font-weight: 500; color: var(--text-color); }
@@ -383,9 +440,10 @@ body, html {
 ========================================== */
 .modal { 
     position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-    background: rgba(0,0,0,0.6); z-index: 1000; 
+    background: rgba(0,0,0,0.55); z-index: 1000; 
     display: flex; justify-content: center; align-items: center; 
-    backdrop-filter: blur(4px); 
+    
+    /* 🌟 修復卡頓 1：移除極度消耗 GPU 的 backdrop-filter (毛玻璃) */
     
     /* 🌟 背景遮罩的淡入淡出動畫 */
     transition: opacity 0.25s ease, visibility 0.25s !important;
@@ -402,7 +460,12 @@ body, html {
     transform-origin: center center;
     transform: translateY(0) scale(1);
     opacity: 1;
-    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
+    
+    /* 🌟 修復卡頓 2：明確宣告獨立的 transition，徹底覆蓋全域 UI 動畫造成的干擾 */
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                opacity 0.25s ease,
+                background-color 0.5s ease,
+                border-color 0.5s ease !important;
     will-change: transform, opacity;
 }
 

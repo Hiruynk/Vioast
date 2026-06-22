@@ -10,7 +10,7 @@
     <title>Vioast</title>
     <link rel="icon" href="/static/app-logo.png">
     <link rel="apple-touch-icon" href="/static/app-logo.png">
-    <link rel="stylesheet" href="/static/style.css?v=19">
+    <link rel="stylesheet" href="/static/style.css?v=21">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/5.3.12/pixi.min.js"></script>
     <script src="/static/live2dcubismcore.min.js"></script>
@@ -281,6 +281,12 @@
                 <h3 data-i18n="voice_header">⚙️ 語音對話設定</h3>
                 <button class="close-btn" id="close-lang-modal">×</button>
             </div>
+            <label><span data-i18n="voice_toggle">🔊 語音開關：</span>
+                <select id="sel-voice-toggle">
+                    <option value="on" data-i18n="voice_on">開啟 (預設)</option>
+                    <option value="off" data-i18n="voice_off">關閉 (靜音模式)</option>
+                </select>
+            </label>
             <label><span data-i18n="voice_input_lang">🗣️ 您的輸入語言：</span>
                 <select id="sel-input-lang">
                     <option value="cantonese" data-i18n="lang_cantonese">廣東話</option>
@@ -344,6 +350,6 @@
         </div>
     </div>
 
-    <script src="/static/main.js?v=14"></script>
+    <script src="/static/main.js?v=16"></script>
 </body>
 </html>
