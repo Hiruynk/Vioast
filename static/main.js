@@ -726,21 +726,47 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (chatSessions.length > 10) { chatSessions.pop(); }
 
-        try {
-            localStorage.setItem('hkiit_chat_sessions', JSON.stringify(chatSessions));
-            renderSidebar();
-        } catch (e) {
-            console.warn("⚠️ 快取空間有限，正在為歷史紀錄進行大圖 Base64 降維壓縮...");
-            // 🌟 空間防護鎖：若空間爆滿，僅清除過往對話中沉重的圖片 base64 字串，保留檔名標籤，確保網站絕不崩潰！
-            chatSessions.forEach(s => {
-                s.messages.forEach(m => {
-                    if (m.file && m.file.type === 'image') m.file.data = ""; 
-                });
-            });
+        let saved = false;
+        
+        // 🌟 智慧型儲存迴圈：跨 Session 逐張淘汰最舊的圖片
+        while (!saved) {
             try {
                 localStorage.setItem('hkiit_chat_sessions', JSON.stringify(chatSessions));
                 renderSidebar();
-            } catch (err) {}
+                saved = true; // 成功儲存，安全跳出迴圈
+            } catch (e) {
+                console.warn("⚠️ 普通對話紀錄快取已滿，啟動智慧降維壓縮（尋找並清除最舊圖片）...");
+                
+                let foundOldestImage = false;
+                
+                // 🌟 從最舊的對話紀錄 (陣列尾端) 開始往回找
+                for (let i = chatSessions.length - 1; i >= 0; i--) {
+                    let session = chatSessions[i];
+                    
+                    // 🌟 進入該對話後，從最早的訊息 (陣列頭端) 開始找圖片
+                    for (let j = 0; j < session.messages.length; j++) {
+                        let msg = session.messages[j];
+                        if (msg.file && msg.file.type === 'image' && msg.file.data) {
+                            msg.file.data = ""; // 只清空 base64 數據，保留檔案標籤
+                            foundOldestImage = true;
+                            break; // 找到第一張（最舊的）就停止該層搜尋
+                        }
+                    }
+                    if (foundOldestImage) break; // 已經清掉一張了，跳出外層搜尋，準備重新 try 儲存
+                }
+                
+                // 🚨 終極防爆：如果所有 Session 裡的圖片都已經清光了，但還是報錯存不下
+                if (!foundOldestImage) {
+                    console.error("無法儲存：圖片已全數降維，強行刪除最舊的一筆對話紀錄以釋放空間...");
+                    // 只要還有大於 1 筆的對話，就砍掉最舊的那一筆保命
+                    if (chatSessions.length > 1) {
+                        chatSessions.pop(); 
+                    } else {
+                        // 如果只剩最後 1 筆還是存不下（極端情況），直接放棄儲存避免死迴圈
+                        break; 
+                    }
+                }
+            }
         }
     }
 
@@ -2078,6 +2104,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (attachedFile) {
             currentFilePayload = { name: attachedFile.name, type: attachedFile.type, data: attachedFile.data };
         }
+        
 
         // 🌟 核心修復：提取完檔案數據後，立刻呼叫引擎瞬間洗淨畫面的預覽縮圖！
         if (window.clearAttachment) window.clearAttachment();
@@ -2166,7 +2193,12 @@ document.addEventListener('DOMContentLoaded', () => {
             renderL2dHistory();
 
             // 👇 儲存至專屬歷史紀錄，且不呼叫 saveSession()
-            live2dMessages.push({ role: 'user', content: text });
+            // ✅ 修正版：將圖片檔案一併寫入 AI 的歷史記憶陣列
+            let userMsgObj = { role: 'user', content: text };
+            if (currentFilePayload) {
+                userMsgObj.file = { ...currentFilePayload };
+            }
+            live2dMessages.push(userMsgObj);
             live2dMessages.push({ role: 'ai', content: fullAiResponse });
 
             // 清空輸入框
@@ -2541,18 +2573,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeL2dHistory = document.getElementById('close-l2d-history');
 
     function saveL2dHistory() {
-        // 👇 🌟 核心修復：為 Live2D 歷史紀錄加上 localStorage 容量防爆護盾！
-        try {
-            localStorage.setItem('hkiit_l2d_history', JSON.stringify(live2dFullHistory));
-        } catch (e) {
-            console.warn("Live2D 紀錄快取已滿，啟動 Base64 降維壓縮...");
-            // 若空間爆滿，僅清除過往對話中沉重的圖片 base64 字串，保留檔名標籤，確保網站絕不崩潰
-            live2dFullHistory.forEach(msg => {
-                if (msg.file && msg.file.type === 'image') msg.file.data = "";
-            });
+        let saved = false;
+        
+        // 🌟 智慧型儲存迴圈：不一次砍光，而是逐張淘汰舊圖直到存得下為止
+        while (!saved) {
             try {
                 localStorage.setItem('hkiit_l2d_history', JSON.stringify(live2dFullHistory));
-            } catch (err) {}
+                saved = true; // 成功儲存，安全跳出迴圈
+            } catch (e) {
+                console.warn("⚠️ Live2D 紀錄快取已滿，啟動智慧降維壓縮（逐一清除最舊圖片）...");
+                
+                // 尋找「最舊的」且「還帶有 base64 圖片資料」的訊息索引
+                let oldestImageMsgIndex = -1;
+                for (let i = 0; i < live2dFullHistory.length; i++) {
+                    const msg = live2dFullHistory[i];
+                    if (msg.file && msg.file.type === 'image' && msg.file.data) {
+                        oldestImageMsgIndex = i;
+                        break; // 找到第一張（最舊的）就停止搜尋
+                    }
+                }
+                
+                // 如果有找到舊圖片，就把那張舊圖片清空
+                if (oldestImageMsgIndex !== -1) {
+                    live2dFullHistory[oldestImageMsgIndex].file.data = ""; 
+                    // 清空後，while 迴圈會自動進行下一次 try 嘗試儲存
+                } else {
+                    // 🚨 如果連一張圖片都沒得刪了，但還是報錯（代表純文字對話量已經達到幾 MB 的極限）
+                    console.error("無法儲存：圖片已全數降維，強行清理最舊的對話以釋放空間...");
+                    if (live2dFullHistory.length > 10) {
+                        // 刪除最舊的 10 筆對話紀錄來保命
+                        live2dFullHistory.splice(0, 10); 
+                    } else {
+                        // 避免死迴圈，直接放棄儲存
+                        break; 
+                    }
+                }
+            }
         }
     }
 
@@ -2565,15 +2621,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = document.createElement('div');
             item.className = `l2d-log-item ${msg.role === 'user' ? 'log-user' : 'log-ai'}`;
             
+            // 1. 生成角色名稱
             const roleEl = document.createElement('div');
             roleEl.className = 'l2d-log-role';
             let youStr = appSettings.appLang === 'en' ? '丨You' : '你';
             roleEl.innerText = msg.role === 'user' ? youStr : 'Hiyori';
             
+            // 2. 🌟 生成文字內容容器 (強制使用 Flex 垂直排列，保證順序絕對不亂)
             const textEl = document.createElement('div');
             textEl.className = 'l2d-log-text';
+            textEl.style.display = 'flex';
+            textEl.style.flexDirection = 'column';
+            textEl.style.alignItems = 'flex-start';
+            textEl.style.gap = '8px'; // 圖片與文字之間的優雅間距
             
-            let cleanText = msg.content;
+            let cleanText = msg.content || '';
             const textRegex = /\[\s*TEXT\s*\]([\s\S]*?)(?:\[\s*\/\s*TEXT\s*\]|$)/i;
             const voiceRegex = /\[\s*VOICE\s*\]([\s\S]*?)(?:\[\s*\/\s*VOICE\s*\]|$)/i;
 
@@ -2581,73 +2643,85 @@ document.addEventListener('DOMContentLoaded', () => {
                 cleanText = cleanText.match(textRegex)[1].trim();
             } else {
                 if (voiceRegex.test(cleanText)) cleanText = cleanText.replace(voiceRegex, '');
-                cleanText = cleanText.replace(/\\[\\s*\\/?\\s*(VOICE|TEXT)\\s*\\]/gi, '').trim();
+                cleanText = cleanText.replace(/\[\s*\/?\s*(VOICE|TEXT)\s*\]/gi, '').trim();
             }
-            
-            textEl.innerText = cleanText;
-            item.appendChild(roleEl);
-            item.appendChild(textEl);
 
             // =======================================================
-            // 🌟 核心新增：在 Live2D 聊天紀錄中優雅還原使用者上傳的檔案
+            // 🌟 3. 絕對優先：先將「圖片/檔案」塞入容器，保證它永遠在最頂部！
             // =======================================================
             if (msg.file) {
-                if (msg.file.type === 'image' && msg.file.data) {
-                    const imgEl = document.createElement('img');
-                    imgEl.src = msg.file.data;
-                    imgEl.style.maxWidth = '100px';
-                    imgEl.style.maxHeight = '100px';
-                    imgEl.style.borderRadius = '8px';
-                    imgEl.style.display = 'block';
-                    imgEl.style.marginTop = '8px';
-                    imgEl.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
-                    imgEl.style.cursor = 'pointer';
-                    imgEl.style.pointerEvents = 'auto'; // 活化點擊
-
-                    // 完美對接雙軌 Lightbox 圖片懸浮放大鏡
-                    imgEl.onclick = (e) => {
-                        e.stopPropagation();
-                        let lightbox = document.getElementById('hkiit-image-lightbox');
-                        if (!lightbox) {
-                            lightbox = document.createElement('div');
-                            lightbox.id = 'hkiit-image-lightbox';
-                            lightbox.className = 'image-lightbox-overlay';
-                            const closeBtn = document.createElement('div');
-                            closeBtn.className = 'image-lightbox-close';
-                            closeBtn.innerHTML = '×';
-                            const img = document.createElement('img');
-                            img.className = 'image-lightbox-content';
-                            lightbox.appendChild(closeBtn);
-                            lightbox.appendChild(img);
-                            document.body.appendChild(lightbox);
-                            lightbox.onclick = () => lightbox.classList.remove('active');
-                        }
-                        const lightboxImg = lightbox.querySelector('.image-lightbox-content');
-                        lightboxImg.src = msg.file.data;
-                        requestAnimationFrame(() => lightbox.classList.add('active'));
-                    };
-                    item.appendChild(imgEl);
+                if (msg.file.type === 'image') {
+                    if (msg.file.data) {
+                        const imgEl = document.createElement('img');
+                        imgEl.src = msg.file.data;
+                        imgEl.style.maxWidth = '180px';
+                        imgEl.style.maxHeight = '180px';
+                        imgEl.style.borderRadius = '12px';
+                        imgEl.style.display = 'block';
+                        imgEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                        imgEl.style.cursor = 'pointer';
+                        
+                        // 點擊觸發放大鏡
+                        imgEl.onclick = (e) => {
+                            e.stopPropagation();
+                            let lightbox = document.getElementById('hkiit-image-lightbox');
+                            if (!lightbox) {
+                                lightbox = document.createElement('div');
+                                lightbox.id = 'hkiit-image-lightbox';
+                                lightbox.className = 'image-lightbox-overlay';
+                                const closeBtn = document.createElement('div');
+                                closeBtn.className = 'image-lightbox-close';
+                                closeBtn.innerHTML = '×';
+                                const img = document.createElement('img');
+                                img.className = 'image-lightbox-content';
+                                lightbox.appendChild(closeBtn);
+                                lightbox.appendChild(img);
+                                document.body.appendChild(lightbox);
+                                lightbox.onclick = () => lightbox.classList.remove('active');
+                            }
+                            const lightboxImg = lightbox.querySelector('.image-lightbox-content');
+                            lightboxImg.src = msg.file.data;
+                            requestAnimationFrame(() => lightbox.classList.add('active'));
+                        };
+                        textEl.appendChild(imgEl); // 🌟 插入圖片
+                    } else {
+                        // 快取飽和的優雅降維標籤
+                        const imgFallback = document.createElement('div');
+                        imgFallback.style.fontSize = '13px'; imgFallback.style.opacity = '0.7';
+                        imgFallback.innerText = `🖼️ 圖片: ${msg.file.name} (已成功上傳)`;
+                        textEl.appendChild(imgFallback); // 🌟 插入標籤
+                    }
                 } else if (msg.file.type === 'file') {
-                    // 文件附件樣式還原
                     const fileBox = document.createElement('div');
                     fileBox.style.display = 'flex'; fileBox.style.alignItems = 'center'; fileBox.style.gap = '6px';
-                    fileBox.style.padding = '4px 10px'; fileBox.style.marginTop = '6px';
-                    fileBox.style.background = 'rgba(128, 128, 128, 0.1)';
-                    fileBox.style.border = '1px solid var(--border-color)';
-                    fileBox.style.borderRadius = '8px'; fileBox.style.fontSize = '12px';
+                    fileBox.style.padding = '6px 12px'; 
+                    fileBox.style.background = msg.role === 'user' ? 'rgba(0, 0, 0, 0.06)' : 'rgba(128, 128, 128, 0.1)';
+                    fileBox.style.borderRadius = '10px'; fileBox.style.fontSize = '13px';
                     fileBox.style.width = 'max-content'; fileBox.style.maxWidth = '100%';
                     fileBox.innerHTML = `📄 <span style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${msg.file.name}</span>`;
-                    item.appendChild(fileBox);
+                    textEl.appendChild(fileBox); // 🌟 插入檔案框
                 }
             }
-            
+
+            // =======================================================
+            // 🌟 4. 其次：將「文字」用獨立的 div 包起來放在圖片下方
+            // =======================================================
+            if (cleanText) {
+                const textSpan = document.createElement('div');
+                textSpan.innerText = cleanText;
+                textEl.appendChild(textSpan);
+            }
+
+            // 5. 組裝並加入到 DOM 中
+            item.appendChild(roleEl);
+            item.appendChild(textEl);
             contentBox.appendChild(item);
         });
 
-        setTimeout(() => {
-            contentBox.scrollTo({ top: contentBox.scrollHeight, behavior: 'smooth' });
-        }, 50);
-    }
+    setTimeout(() => {
+        contentBox.scrollTo({ top: contentBox.scrollHeight, behavior: 'smooth' });
+    }, 50);
+}
 
     if (btnL2dHistory && panelL2dHistory) {
         // 點擊懸浮按鈕：自動切換開關 (Toggle)

@@ -2319,3 +2319,32 @@ body:has(#view-live2d:not(.l2d-hidden)) .custom-dropdown-menu .dropdown-item {
 body:has(#view-live2d:not(.l2d-hidden)) .custom-dropdown-menu .dropdown-item:hover {
     background-color: rgba(128, 128, 128, 0.15) !important;
 }
+
+/* ==========================================
+   🍏 終極統一：普通模式發送按鈕 (#chat-send) 拔除圓圈與尺寸同步
+========================================== */
+#chat-send {
+    background-color: transparent !important;
+    color: var(--text-color) !important;
+    border: 1px solid transparent !important;
+    box-shadow: none !important;
+    transition: background-color 0.2s, transform 0.2s !important;
+}
+
+#chat-send svg,
+#chat-send i {
+    width: 22px !important;
+    height: 22px !important;
+    font-size: 22px !important;
+    /* 光學置中微調 */
+    transform: translate(-2px, 1px) !important; 
+}
+
+#chat-send:hover {
+    background-color: var(--input-bg) !important;
+}
+
+#chat-send:active {
+    background-color: var(--border-color) !important;
+    transform: scale(0.9) !important; 
+}
