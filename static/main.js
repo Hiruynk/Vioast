@@ -1,11 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // ==========================================
-    // 1. 狀態與設定管理
-    // ==========================================
+    
+    
+    
     let currentMode = 'chat'; 
     let live2dApp = null; 
     let fileContentBuffer = ""; 
-    let attachedFile = null; // 🌟 新增：用來記錄當前準備發送的檔案元數據 (名稱、類型與數據)
+    let attachedFile = null; 
 
     let live2dFullHistory = JSON.parse(localStorage.getItem('hkiit_l2d_history')) || [];
 
@@ -13,31 +13,31 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSessionId = Date.now();
     let currentMessages = [];
 
-    // 頂部全域變數 (🌟 已經刪除了重複的 live2dApp)
+    
     let live2dModel, ttsSpeaking = false, live2dMessages = [];
-    // 👇 新增
+    
     let live2dMood = 'calm';
 
-    // 宣告佇列變數，放在全域確保不會被洗掉
+    
     let sentenceQueue = [];
     let currentAudio = null;
 
-    let ttsInterruptToken = 0; // 🌟 新增：語音防重疊中斷權杖
+    let ttsInterruptToken = 0; 
 
     let audioContext = null;
     let audioAnalyser = null;
 
-    // 🌟 新增：全域防連點鎖 (確保任何時候只有一個請求在進行)
+    
     let isProcessingRequest = false;
 
     let appSettings = {
         model: 'gemini', apiKey: '', theme: 'auto',
         inputLang: 'cantonese', outputLang: 'cantonese', textLang: 'chinese',
-        sakuraEffect: true, // 🌟 新增：櫻花特效預設開啟
-        voiceToggle: true, // 🌟 新增：語音總開關 (預設開啟)
+        sakuraEffect: true, 
+        voiceToggle: true, 
         live2dLangSet: false,
         appLang: 'zh-HK',
-        ttsApiUrl: '' // 👈 🌟 新增：用來存放後端傳來的 TTS 網址
+        ttsApiUrl: '' 
     };
 
     const dom = {
@@ -86,8 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
         selInputLang: document.getElementById('sel-input-lang'),
         selOutputLang: document.getElementById('sel-output-lang'),
         selTextLang: document.getElementById('sel-text-lang'),
-        selVoiceToggle: document.getElementById('sel-voice-toggle'), // 🌟 新增：語音開關 DOM
-        selSakuraEffect: document.getElementById('sel-sakura-effect'), // 🌟 新增：抓取櫻花選單
+        selVoiceToggle: document.getElementById('sel-voice-toggle'), 
+        selSakuraEffect: document.getElementById('sel-sakura-effect'), 
         live2dSubtitle: document.getElementById('live2d-subtitle'),
         btnSettings: document.getElementById('btn-settings'), 
         btnLogin: document.getElementById('btn-login'),
@@ -101,9 +101,9 @@ document.addEventListener('DOMContentLoaded', () => {
         settingsSuccess: document.getElementById('settings-success')
     };
 
-    // 定義 Logo 的 HTML 字串，確保它與文字完美對齊
+    
 
-    // ===== 定義高質感的 SVG 圖示變數 =====
+    
     const svgUser = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; position: relative; top: -1px;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
     const svgSettings = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; position: relative; top: -1px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`;
     const svgSettingsInline = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin: 0 2px; position: relative; top: -1px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`;
@@ -120,12 +120,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const svgImageIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; position: relative; top: -1px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`;
     const svgFileIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; position: relative; top: -1px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
     
-    // 👇 🌟 新增：語音開關專用的科技感電源 SVG
+    
     const svgPower = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; position: relative; top: -1px;"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>`;
 
-    // ===== 完備多國語言包 =====
+    
 
-    // ===== 完備多國語言包 =====
+    
     const translations = {
         'en': {
             app_title: "Open Day Assistant", new_chat: "New Chat", recent_chats: "Recent Chats",
@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
             live2d_subtitle: "Click the microphone button on the bottom right to talk to me",
             voice_header: `${svgSettings} Voice Dialogue Settings`, voice_input_lang: `${svgMic} Your Input Language:`,
             voice_output_lang: `${svgSpeaker} AI Voice Output:`, voice_text_lang: `${svgPen} Screen Display Text:`,
-            settings_sakura: "🌸 Sakura Effect:", sakura_on: "On (Default)", sakura_off: "Off (Performance)", // 🌟 新增
+            settings_sakura: "🌸 Sakura Effect:", sakura_on: "On (Default)", sakura_off: "Off (Performance)", 
             lang_cantonese: "Cantonese", lang_mandarin: "Mandarin", lang_japanese: "Japanese", lang_english: "English",
             lang_chinese_text: "Chinese", lang_english_text: "English", voice_start_btn: "Confirm and Enter",
             model_gemini_desc: "Fastest Response", model_gemma_desc: "Local Computing",
@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
             local_help_s3_model_title: "Model Name:",
             local_help_s3_model_desc: "Enter the model that already exists on your PC.",
             l2d_placeholder_verify: "Type or use Mic ...",
-            l2d_loading_text: "Loading model, please wait...", // 🌟 新增英文
+            l2d_loading_text: "Loading model, please wait...", 
             local_help_title: "❓ Local LLM Startup Tutorial",
             tooltip_l2d_history: "Live2D Chat Log", l2d_history_title: "Chat History",
             tooltip_l2d_auto: "Voice Direct", tooltip_l2d_verify: "Verify Mode",
@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
             live2d_subtitle: "點擊右下角麥克風與我對話",
             voice_header: `${svgSettings} 語音對話設定`, voice_input_lang: `${svgMic} 您的輸入語言：`,
             voice_output_lang: `${svgSpeaker} AI 語音輸出：`, voice_text_lang: `${svgPen} 螢幕顯示文字：`,
-            settings_sakura: "🌸 櫻花飄落特效：", sakura_on: "開啟 (預設)", sakura_off: "關閉 (提升效能)", // 🌟 新增
+            settings_sakura: "🌸 櫻花飄落特效：", sakura_on: "開啟 (預設)", sakura_off: "關閉 (提升效能)", 
             lang_cantonese: "廣東話", lang_mandarin: "普通話", lang_japanese: "日文", lang_english: "英文",
             lang_chinese_text: "中文", lang_english_text: "英文", voice_start_btn: "確認並進入",
             model_gemini_desc: "回覆最快", model_gemma_desc: "本地運算",
@@ -220,11 +220,11 @@ document.addEventListener('DOMContentLoaded', () => {
             local_help_s3_model_title: "模型名稱：",
             local_help_s3_model_desc: "填寫PC上已存在的模型。",
             l2d_placeholder_verify: "輸入後發送...",
-            l2d_loading_text: "模型載入中，請稍候...", // 🌟 新增繁體
+            l2d_loading_text: "模型載入中，請稍候...", 
             local_help_title: "❓ 本地大模型啟動教學",
             tooltip_l2d_history: "Live2D 聊天紀錄", l2d_history_title: "聊天紀錄",
             tooltip_l2d_auto: "語音直發", tooltip_l2d_verify: "打字校對",
-            voice_toggle: `${svgPower} 語音開關：`, voice_on: "開啟 (預設)", voice_off: "關閉 (靜音模式)", // 🌟 新增
+            voice_toggle: `${svgPower} 語音開關：`, voice_on: "開啟 (預設)", voice_off: "關閉 (靜音模式)", 
             welcome_md: `您好！歡迎來到 **IVE HKIIT 開放日**！我是您的官方 **AI Chatbot 智能升學諮詢助手**。\n\n香港專業教育學院（IVE）資訊科技學系已全新升級為 **香港資訊科技學院（HKIIT）**！在這裡，我能為您提供各項熱門的高級文憑 (Higher Diploma) 及基礎文憑 (Diploma of Foundation Studies) 的課程大綱、學費、入學要求，或是為您導航今天的開放日活動！\n\n**您可以試著這樣問我：**\n* 課程內容：\`IT114126 數據科學及人工智能高級文憑學咩？\`\n* 入學條件：\`BA114037 房地產高級文憑有咩入學要求？\`\n* 交通導航：\`青衣 IVE 點樣去？\` \n\n請問今天有甚麼我可以幫到您？`
         },
         'zh-CN': {
@@ -246,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
             live2d_subtitle: "点击右下角麦克风与我对话",
             voice_header: `${svgSettings} 语音对话设定`, voice_input_lang: `${svgMic} 您的输入语言：`,
             voice_output_lang: `${svgSpeaker} AI 语音输出：`, voice_text_lang: `${svgPen} 屏幕显示文字：`,
-            settings_sakura: "🌸 樱花飘落特效：", sakura_on: "开启 (默认)", sakura_off: "关闭 (提升效能)", // 🌟 新增
+            settings_sakura: "🌸 樱花飘落特效：", sakura_on: "开启 (默认)", sakura_off: "关闭 (提升效能)", 
             lang_cantonese: "广东话", lang_mandarin: "普通话", lang_japanese: "日文", lang_english: "英文",
             lang_chinese_text: "中文", lang_english_text: "英文", voice_start_btn: "确认并进入",
             model_gemini_desc: "回复最快", model_gemma_desc: "本地运算",
@@ -270,16 +270,16 @@ document.addEventListener('DOMContentLoaded', () => {
             local_help_s3_model_title: "模型名称：",
             local_help_s3_model_desc: "填写PC上已存在的模型。",
             l2d_placeholder_verify: "输入后发送...",
-            l2d_loading_text: "模型载入中，请稍候...", // 🌟 新增簡體
+            l2d_loading_text: "模型载入中，请稍候...", 
             local_help_title: "❓ 本地大模型启动教学",
             tooltip_l2d_history: "Live2D 聊天记录", l2d_history_title: "聊天记录",
             tooltip_l2d_auto: "语音直发", tooltip_l2d_verify: "打字校对",
-            voice_toggle: `${svgPower} 语音开关：`, voice_on: "开启 (默认)", voice_off: "关闭 (静音模式)", // 🌟 新增
+            voice_toggle: `${svgPower} 语音开关：`, voice_on: "开启 (默认)", voice_off: "关闭 (静音模式)", 
             welcome_md: `您好！欢迎来到 **IVE HKIIT 开放日**！我是您的官方 **AI Chatbot 智能升学咨询助手**。\n\n香港专业教育学院（IVE）资讯科技学系已全新升级为 **香港资讯科技学院（HKIIT）**！在这里，我能为您提供各项热门的高级文凭 (Higher Diploma) 及基础文凭 (Diploma of Foundation Studies) 的课程大纲、学费、入学要求，或是为您导航今天的开放日活动！\n\n**您可以试着这样问我：**\n* 课程内容：\`IT114126 数据科学及人工智能高级文凭学什么？\`\n* 入学条件：\`BA114037 房地产高级文凭有什么入学要求？\`\n* 交通导航：\`青衣 IVE 怎么去？\` \n\n请问今天有什么我可以帮到您？`
         }
     };
 
-    // ===== 絲滑打字特效模組 =====
+    
     let welcomeAnimInterval = null;
 
     function displayWelcomeMessage(animate = false) {
@@ -358,9 +358,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ==========================================
-    // 2. 帳號同步、側邊欄與新版下拉選單
-    // ==========================================
+    
+    
+    
     let currentUser = localStorage.getItem('hkiit_current_user');
     
     if (currentUser) {
@@ -370,11 +370,11 @@ document.addEventListener('DOMContentLoaded', () => {
             body: JSON.stringify({username: currentUser})
         }).then(r => r.json()).then(data => {
             if (data.status === 'success') {
-                // 🌟 同步載入雲端的所有設定
+                
                 appSettings.apiKey = data.api_key || ""; 
                 appSettings.localUrl = data.local_url || "";
                 appSettings.localModel = data.local_model_name || "gemma4:12b";
-                appSettings.ttsApiUrl = data.tts_api_url || ""; // 👈 🌟 儲存 TTS 網址
+                appSettings.ttsApiUrl = data.tts_api_url || ""; 
                 
                 localStorage.setItem('hkiit_settings', JSON.stringify(appSettings));
                 updateModelBadge();
@@ -382,18 +382,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }).catch(e => console.log("[錯誤] 背景同步失敗:", e));
     }
 
-    // 模型選單觸發
+    
     dom.dropdownTrigger.addEventListener('click', (e) => {
         e.stopPropagation();
         dom.dropdownMenu.classList.toggle('hidden');
-        dom.langDropdownMenu.classList.add('hidden'); // 互斥關閉
+        dom.langDropdownMenu.classList.add('hidden'); 
     });
 
-    // 語言選單觸發
+    
     dom.langDropdownTrigger.addEventListener('click', (e) => {
         e.stopPropagation();
         dom.langDropdownMenu.classList.toggle('hidden');
-        dom.dropdownMenu.classList.add('hidden'); // 互斥關閉
+        dom.dropdownMenu.classList.add('hidden'); 
     });
 
     document.addEventListener('click', (e) => {
@@ -405,12 +405,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 模型選擇監聽
+    
     dom.dropdownItems.forEach(item => {
         item.addEventListener('click', () => {
             const newModel = item.getAttribute('data-value');
             
-            // 🌟 終極修復 2：如果發現使用者切換了模型，強制開啟新對話清空緩存！
+            
             if (appSettings.model !== newModel) {
                 appSettings.model = newModel;
                 localStorage.setItem('hkiit_settings', JSON.stringify(appSettings));
@@ -420,17 +420,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 語言選擇監聽 (確保放置於全域作用域)
+    
     dom.langDropdownItems.forEach(item => {
         item.addEventListener('click', () => {
             appSettings.appLang = item.getAttribute('data-value');
             localStorage.setItem('hkiit_settings', JSON.stringify(appSettings));
             applyLanguage();
-            // 👇 修復：如果是對話模式才刷新聊天紀錄，Live2D 模式只更新文字不重置
+            
             if (currentMode === 'chat') {
                 startNewChat(); 
             } else {
-                setupLive2DControls(); // 刷新 Live2D 控制列的翻譯
+                setupLive2DControls(); 
             }
             dom.langDropdownMenu.classList.add('hidden');
         });
@@ -460,13 +460,13 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.inputLocalModel.value = appSettings.localModel || 'gemma4:12b';
         dom.selTheme.value = appSettings.theme || 'auto';
 
-        // 🌟 1. 讀取目前的櫻花設定值
+        
         const selSakura = document.getElementById('sel-sakura-effect');
         if (selSakura) {
             selSakura.value = appSettings.sakuraEffect === false ? 'off' : 'on';
         }
 
-        // 🌟 2. 智慧判斷：如果目前是 Live2D 模式，就顯示櫻花開關；否則隱藏！
+        
         const sakuraGroup = document.getElementById('sakura-setting-group');
         if (sakuraGroup) {
             if (currentMode === 'live2d') {
@@ -531,7 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('hkiit_current_user', user);
                 dom.btnLogin.querySelector('span').innerText = user;
                 
-                // 🌟 登入成功時，立刻覆蓋本地設定為 MongoDB 的資料
+                
                 appSettings.apiKey = data.api_key || ""; 
                 appSettings.localUrl = data.local_url || "";
                 appSettings.localModel = data.local_model_name || "gemma4:12b";
@@ -570,7 +570,7 @@ document.addEventListener('DOMContentLoaded', () => {
         appSettings.localModel = newLocalModel;
         appSettings.theme = dom.selTheme.value;
 
-        // 🌟 1. 新增：儲存櫻花開關狀態
+        
         const selSakura = document.getElementById('sel-sakura-effect');
         if (selSakura) {
             appSettings.sakuraEffect = (selSakura.value === 'on');
@@ -580,7 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (currentUser) {
             try {
-                // 儲存設定時，把所有的 API 與 URL 參數一起打包上傳到 MongoDB
+                
                 await fetch('/api/save_key', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -594,7 +594,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         applyTheme(); updateModelBadge(); 
 
-        // 🌟 2. 新增：如果處於 Live2D 模式，儲存後立刻呼叫引擎，即時開啟或關閉櫻花！
+        
         if (currentMode === 'live2d' && window.toggleSakuraPetals) {
             window.toggleSakuraPetals();
         }
@@ -606,16 +606,16 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.closeLangModal.addEventListener('click', () => {
         dom.langModal.classList.add('hidden');
         
-        // 🌟 修正 2：如果用戶是在 Chat 模式下第一次點擊 Live2D 卻反悔，才切回 Chat。
-        // 如果已經在 Live2D 模式中打開設定，按 X 就什麼都不做，完美留在 Live2D！
+        
+        
         if (currentMode === 'chat') {
             switchMode('chat');
         }
     });
 
-    // ==========================================
-    // 3. UI 初始化
-    // ==========================================
+    
+    
+    
     const savedSettings = localStorage.getItem('hkiit_settings');
     if (savedSettings) appSettings = { ...appSettings, ...JSON.parse(savedSettings) };
  
@@ -648,8 +648,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (dom.dropdownItems) {
                 dom.dropdownItems.forEach(i => {
-                    // 👇 🌟 核心修復：使用 textContent 代替 innerText！
-                    // 因為隱藏狀態下的 DOM，innerText 會回傳空字串，導致文字消失。
+                    
+                    
                     let titleSpan = i.querySelector('.item-title');
                     let titleText = titleSpan ? titleSpan.textContent : i.textContent.trim();
 
@@ -661,7 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if(i.getAttribute('data-value') === appSettings.model) {
                         i.classList.add('active');
                         if(dom.selectedModelName) {
-                            dom.selectedModelName.textContent = titleText; // 🌟 這裡也改為 textContent
+                            dom.selectedModelName.textContent = titleText; 
                         }
                     } else {
                         i.classList.remove('active');
@@ -691,9 +691,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ==========================================
-    // 4. 對話歷史管理
-    // ==========================================
+    
+    
+    
     function startNewChat() {
         currentSessionId = Date.now();
         currentMessages = [];
@@ -702,7 +702,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fileContentBuffer = "";
         dom.uploadPreview.classList.add('hidden');
         renderSidebar();
-        // 🌟 順便強制隱藏畫面上的 Live2D 對話氣泡與字幕
+        
         const bubble = document.getElementById('live2d-speech-bubble');
         if (bubble) bubble.classList.add('hidden');
         if (dom.live2dSubtitle) dom.live2dSubtitle.innerText = "";
@@ -728,41 +728,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let saved = false;
         
-        // 🌟 智慧型儲存迴圈：跨 Session 逐張淘汰最舊的圖片
+        
         while (!saved) {
             try {
                 localStorage.setItem('hkiit_chat_sessions', JSON.stringify(chatSessions));
                 renderSidebar();
-                saved = true; // 成功儲存，安全跳出迴圈
+                saved = true; 
             } catch (e) {
                 console.warn("⚠️ 普通對話紀錄快取已滿，啟動智慧降維壓縮（尋找並清除最舊圖片）...");
                 
                 let foundOldestImage = false;
                 
-                // 🌟 從最舊的對話紀錄 (陣列尾端) 開始往回找
+                
                 for (let i = chatSessions.length - 1; i >= 0; i--) {
                     let session = chatSessions[i];
                     
-                    // 🌟 進入該對話後，從最早的訊息 (陣列頭端) 開始找圖片
+                    
                     for (let j = 0; j < session.messages.length; j++) {
                         let msg = session.messages[j];
                         if (msg.file && msg.file.type === 'image' && msg.file.data) {
-                            msg.file.data = ""; // 只清空 base64 數據，保留檔案標籤
+                            msg.file.data = ""; 
                             foundOldestImage = true;
-                            break; // 找到第一張（最舊的）就停止該層搜尋
+                            break; 
                         }
                     }
-                    if (foundOldestImage) break; // 已經清掉一張了，跳出外層搜尋，準備重新 try 儲存
+                    if (foundOldestImage) break; 
                 }
                 
-                // 🚨 終極防爆：如果所有 Session 裡的圖片都已經清光了，但還是報錯存不下
+                
                 if (!foundOldestImage) {
                     console.error("無法儲存：圖片已全數降維，強行刪除最舊的一筆對話紀錄以釋放空間...");
-                    // 只要還有大於 1 筆的對話，就砍掉最舊的那一筆保命
+                    
                     if (chatSessions.length > 1) {
                         chatSessions.pop(); 
                     } else {
-                        // 如果只剩最後 1 筆還是存不下（極端情況），直接放棄儲存避免死迴圈
+                        
                         break; 
                     }
                 }
@@ -790,7 +790,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         displayWelcomeMessage(false); 
         
-        // 🌟 核心修改：載入歷史對話時，同步將攜帶的檔案還原到畫面上！
+        
         currentMessages.forEach(msg => appendMessageUI(msg.content, msg.role, false, msg.file)); 
         
         renderSidebar();
@@ -798,9 +798,9 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(smoothScrollToBottom, 100); 
     }
 
-    // ==========================================
-    // 5. 複製功能與 UI 渲染
-    // ==========================================
+    
+    
+    
     function copyTextToClipboard(text, btn) {
         const dict = translations[appSettings.appLang || 'en'];
         const copyText = dict.btn_copy.replace(/<[^>]*>?/gm, '').trim();
@@ -809,7 +809,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function showSuccess() {
             btn.classList.add('success');
-            btn.innerHTML = svgCheck; // 🌟 只放 SVG
+            btn.innerHTML = svgCheck; 
             btn.setAttribute('data-tooltip', copiedText); 
             setTimeout(() => { 
                 btn.classList.remove('success'); 
@@ -820,44 +820,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function showError(errMessage) {
             alert("複製失敗: " + errMessage);
-            btn.innerHTML = svgFail; // 🌟 只放 SVG
+            btn.innerHTML = svgFail; 
             btn.setAttribute('data-tooltip', failText); 
             setTimeout(() => { 
                 btn.innerHTML = svgCopy; 
                 btn.setAttribute('data-tooltip', copyText); 
             }, 1800);
         }
-        // ... (下方 navigator.clipboard 保留不動)
+        
 
         function showError(errMessage) {
-            // 在手機上彈出真實錯誤原因，方便你 Debug
+            
             alert("複製失敗: " + errMessage);
             btn.innerHTML = dict.btn_copy_fail;
             setTimeout(() => { btn.innerHTML = dict.btn_copy; }, 1800);
         }
 
-        // 1. 嘗試現代 API (需 HTTPS + 同步觸發)
+        
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(text)
                 .then(showSuccess)
                 .catch(err => {
                     console.warn("Clipboard API failed, trying fallback...", err);
-                    fallbackCopy(text); // 如果被非同步阻擋或權限問題，轉交給降級方案
+                    fallbackCopy(text); 
                 });
         } else {
             fallbackCopy(text);
         }
 
-        // 2. 針對 iOS 極度優化的降級方案
+        
         function fallbackCopy(textToCopy) {
             let textArea = document.createElement("textarea");
             textArea.value = textToCopy;
             
-            // iOS 黑魔法：必須設為 contentEditable = true 且 readOnly = false 才能被順利全選
+            
             textArea.contentEditable = true;
             textArea.readOnly = false;
             
-            // 隱藏元素的絕對安全寫法
+            
             textArea.style.position = 'fixed';
             textArea.style.top = '-9999px';
             textArea.style.left = '-9999px';
@@ -867,7 +867,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.appendChild(textArea);
 
             try {
-                // 針對 iOS 設備的選取邏輯
+                
                 if (navigator.userAgent.match(/ipad|iphone/i)) {
                     let range = document.createRange();
                     range.selectNodeContents(textArea);
@@ -895,7 +895,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function appendMessageUI(rawText, role, animate = true, fileObj = null) {
-        const dict = translations[appSettings.appLang || 'en']; // 🛑 核心修復點：防止腳本崩潰
+        const dict = translations[appSettings.appLang || 'en']; 
         if (!rawText) return;
         const div = document.createElement('div');
         div.className = `message ${animate ? 'slide-up' : ''} ${role === 'user' ? 'user-message' : 'ai-message'}`;
@@ -907,7 +907,7 @@ document.addEventListener('DOMContentLoaded', () => {
         content.className = 'msg-content';
         let cleanText = rawText;
         
-        // 🌟 同步升級正則防禦
+        
         const voiceRegex = /\[\s*VOICE\s*\]([\s\S]*?)(?:\[\s*\/\s*VOICE\s*\]|$)/i;
         const textRegex = /\[\s*TEXT\s*\]([\s\S]*?)(?:\[\s*\/\s*TEXT\s*\]|$)/i;
         
@@ -917,15 +917,15 @@ document.addEventListener('DOMContentLoaded', () => {
             cleanText = cleanText.replace(voiceRegex, '').trim();
         }
         
-        // 🌟 終極防禦洗淨
+        
         cleanText = cleanText.replace(/\[\s*\/?\s*(VOICE|TEXT)\s*\]/gi, '').trim();
         
         content.innerHTML = role === 'user' ? rawText.replace(/\n/g, '<br>') : marked.parse(cleanText);
         content.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
 
-        // =======================================================
-        // 🌟 核心新增：如果訊息內包含檔案物件，將其優雅地渲染在文字最上方
-        // =======================================================
+        
+        
+        
         if (fileObj) {
             if (fileObj.type === 'image') {
                 if (fileObj.data) {
@@ -938,10 +938,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     imgEl.style.marginBottom = '8px';
                     imgEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
                     imgEl.style.cursor = 'pointer';
-                    // 點擊可以放大全螢幕檢視圖片
-                    // 🌟 點擊觸發 Gemini 風格的懸浮圖片放大鏡 (Lightbox)
+                    
+                    
                     imgEl.onclick = () => {
-                        // 檢查畫面中是否已經有放大鏡容器，沒有就現場造一個
+                        
                         let lightbox = document.getElementById('hkiit-image-lightbox');
                         if (!lightbox) {
                             lightbox = document.createElement('div');
@@ -959,24 +959,24 @@ document.addEventListener('DOMContentLoaded', () => {
                             lightbox.appendChild(img);
                             document.body.appendChild(lightbox);
                             
-                            // 點擊背景或關閉按鈕時，收起放大鏡
+                            
                             lightbox.onclick = () => {
                                 lightbox.classList.remove('active');
                             };
                         }
                         
-                        // 將當前點擊的圖片數據塞入放大鏡中
+                        
                         const lightboxImg = lightbox.querySelector('.image-lightbox-content');
                         lightboxImg.src = fileObj.data;
                         
-                        // 防止點擊事件冒泡，並呼叫瀏覽器在下一幀渲染動畫
+                        
                         requestAnimationFrame(() => {
                             lightbox.classList.add('active');
                         });
                     };
                     content.insertBefore(imgEl, content.firstChild);
                 } else {
-                    // 快取空間飽和降維後的優雅小標籤
+                    
                     const imgFallback = document.createElement('div');
                     imgFallback.style.fontSize = '13px'; imgFallback.style.opacity = '0.7'; imgFallback.style.marginBottom = '6px';
                     imgFallback.innerText = `🖼️ 圖片: ${fileObj.name} (已成功上傳)`;
@@ -986,7 +986,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fileBox = document.createElement('div');
                 fileBox.style.display = 'flex'; fileBox.style.alignItems = 'center'; fileBox.style.gap = '6px';
                 fileBox.style.padding = '6px 12px'; 
-                // 根據使用者或 AI 自動變更適配底色
+                
                 fileBox.style.background = role === 'user' ? 'rgba(0, 0, 0, 0.06)' : 'rgba(128, 128, 128, 0.1)';
                 fileBox.style.borderRadius = '10px'; fileBox.style.marginBottom = '8px'; fileBox.style.fontSize = '13px';
                 fileBox.style.width = 'max-content'; fileBox.style.maxWidth = '100%';
@@ -1000,7 +1000,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const copyBtn = document.createElement('button');
         copyBtn.className = 'copy-btn';
         
-        // 🌟 防禦型抓取字典，只保留 SVG 並加上 hover 介紹框
+        
         const dictSafe = translations[appSettings.appLang || 'en'];
         const btnCopyRaw = dictSafe ? dictSafe.btn_copy : "Copy";
         const copyText = btnCopyRaw ? btnCopyRaw.replace(/<[^>]*>?/gm, '').trim() : "Copy";
@@ -1027,9 +1027,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // ==========================================
-    // 6. 核心串流發送邏輯
-    // ==========================================
+    
+    
+    
     async function sendMessage(text) {
         const dict = translations[appSettings.appLang || 'en'];
 
@@ -1050,7 +1050,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentFilePayload = { name: attachedFile.name, type: attachedFile.type, data: attachedFile.data };
         }
 
-        // 🌟 核心修復：提取完檔案數據後，立刻呼叫引擎瞬間洗淨畫面的預覽縮圖！
+        
         if (window.clearAttachment) window.clearAttachment();
 
         let msgObj = { role: 'user', content: userText };
@@ -1095,7 +1095,7 @@ document.addEventListener('DOMContentLoaded', () => {
             mode: currentMode, 
             input_lang: appSettings.inputLang, output_lang: appSettings.outputLang, text_lang: appSettings.textLang,
             ai_model: appSettings.model, api_key: appSettings.apiKey, 
-            file_context: currentFilePayload ? currentFilePayload.data : "", // 🌟 重點防禦：從安全載體讀取
+            file_context: currentFilePayload ? currentFilePayload.data : "", 
             local_url: appSettings.localUrl,
             local_model_name: appSettings.localModel,
             app_lang: appSettings.appLang
@@ -1109,12 +1109,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error(`Server Error: ${response.status}`);
             
             const reader = response.body.getReader();
-            // ... (下方的 const decoder = new TextDecoder... 保持原樣不動)
+            
             const decoder = new TextDecoder("utf-8");
             let aiTextContent = "";
             let isFirstChunk = true;
 
-            // 👇 🌟 1. 新增：用來控制畫面 60fps 刷新頻率的渲染鎖
+            
             let isRendering = false;
             let pendingCleanText = "";
 
@@ -1132,18 +1132,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         try {
                             const dataObj = JSON.parse(dataStr);
                             
-                            // 👇 新增這個判斷：一旦抓到後端的特製標籤，立刻引爆清空緩存！
+                            
                             if (dataObj.text && dataObj.text.includes('[CLEAR_LOCAL_STORAGE]')) {
                                 alert(dataObj.text.replace('[CLEAR_LOCAL_STORAGE]', ''));
-                                localStorage.clear(); // 💥 抹除包括對話紀錄、API Key、主題等所有緩存
-                                window.location.reload(); // 🔄 強制刷洗網頁
+                                localStorage.clear(); 
+                                window.location.reload(); 
                                 return;
                             }
                             
-                            // ... (在 dataObj.text 判斷之後)
+                            
                             aiTextContent += dataObj.text;
                             
-                            // 🌟 即時淨化串流文字，防止使用者在打字過程中看到標籤
+                            
                             let liveCleanText = aiTextContent;
                             const liveTextRegex = /\[\s*TEXT\s*\]([\s\S]*?)(?:\[\s*\/\s*TEXT\s*\]|$)/i;
                             const liveVoiceRegex = /\[\s*VOICE\s*\]([\s\S]*?)(?:\[\s*\/\s*VOICE\s*\]|$)/i;
@@ -1154,36 +1154,36 @@ document.addEventListener('DOMContentLoaded', () => {
                                 liveCleanText = liveCleanText.replace(liveVoiceRegex, '');
                             }
                             
-                            // 暴力刮除尚未閉合或已閉合的標籤
+                            
                             liveCleanText = liveCleanText.replace(/\[\s*\/?\s*(VOICE|TEXT)\s*\]/gi, '').trim();
 
-                            // 串流初期如果正在生成 VOICE 標籤，畫面先顯示思考中
+                            
                             if (liveCleanText === "" && liveVoiceRegex.test(aiTextContent)) {
                                 liveCleanText = "💭 思考中...";
                             }
                             
-                            // =======================================================
-                            // 🌟 2. 核心修復：導入 60fps 節流與無動畫瞬間置底
-                            // =======================================================
+                            
+                            
+                            
                             pendingCleanText = liveCleanText;
                             
                             if (!isRendering) {
                                 isRendering = true;
-                                // 使用瀏覽器原生的渲染幀動畫，強迫 DOM 更新配合螢幕刷新率
+                                
                                 requestAnimationFrame(() => {
                                     if (currentMode === 'chat') {
                                         if (isFirstChunk) { content.innerHTML = ""; isFirstChunk = false; }
                                         
-                                        // 渲染 Markdown
+                                        
                                         content.innerHTML = marked.parse(pendingCleanText);
                                         
-                                        // 🚨 致命卡頓殺手修復：串流時「絕對不能」用 smooth 動畫，改用瞬間置底死死咬住文字！
+                                        
                                         dom.chatHistory.scrollTop = dom.chatHistory.scrollHeight; 
                                     } else {
                                         dom.live2dSubtitle.innerText = pendingCleanText;
                                     }
                                     
-                                    // 渲染完畢，解開鎖定等待下一個幀
+                                    
                                     isRendering = false;
                                 });
                             }
@@ -1216,26 +1216,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (err) {
             console.error("Chat Mode Error:", err);
-            // 🌟 溫和的錯誤處理：如果已經有生成文字，就把錯誤訊息「加在下面」，而不是清空畫面！
+            
             if (typeof aiTextContent !== 'undefined' && aiTextContent.length > 0) {
                 content.innerHTML += `<br><br><span style="color:#ff3b30; font-weight:bold;">⚠️ 系統提示：${dict.err_network}</span>`;
             } else {
                 content.innerText = dict.err_network;
             }
         } finally {
-            // 🌟 極度重要：不管成功還是失敗 (Error)，最後一定要解除防連點鎖！
+            
             isProcessingRequest = false;
         }
     }
 
-    // =======================================================
-    // 🌟 手機版終極防呆：獨立計時器、支援電腦模擬、無震動
-    // =======================================================
-    let isTouchDevice = false; // 全域標記是否使用觸控
+    
+    
+    
+    let isTouchDevice = false; 
 
-    // 將 Tooltip 邏輯封裝，方便給後續新加入的按鈕綁定
+    
     window.bindTooltipEvents = function(btn) {
-        if (btn.hasTooltipBound) return; // 防止重複綁定
+        if (btn.hasTooltipBound) return; 
         btn.hasTooltipBound = true;
         
         let pressTimer = null;
@@ -1286,7 +1286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('contextmenu', (e) => { if (window.innerWidth <= 768) e.preventDefault(); });
         btn.addEventListener('click', (e) => {
             if (window.innerWidth <= 768 && (isLongPress || btn.classList.contains('mobile-show-tooltip'))) {
-                // 👇 🌟 核心修復：加入豁免名單！這三個關鍵按鈕的點擊事件絕對不能被殺死！
+                
                 if (btn.id === 'l2d-mic-btn' || btn.id === 'l2d-send-btn' || btn.id === 'chat-send') {
                     return; 
                 }
@@ -1295,35 +1295,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }, true);
     };
 
-    // 初始化頁面上已有的 tooltip 元素
+    
     document.querySelectorAll('[data-tooltip], [data-i18n-tooltip]').forEach(window.bindTooltipEvents);
 
-    // ==========================================
-    // 7. 其他事件綁定
-    // ==========================================
+    
+    
+    
     dom.chatSend.addEventListener('click', () => sendMessage(dom.chatInput.value));
 
-    // 自動調整輸入框高度
+    
     dom.chatInput.addEventListener('input', function() {
         this.style.height = 'auto'; 
         this.style.height = (this.scrollHeight) + 'px'; 
         if(this.value === '') this.style.height = 'auto'; 
     });
     
-    // 完美的 Enter 鍵發送邏輯 (防中文選字送出，支援 Shift+Enter 換行)
+    
     dom.chatInput.addEventListener('keydown', (e) => {
-        // 防止中文輸入法拼音/注音選字時按下 Enter 意外送出
+        
         if (e.isComposing || e.keyCode === 229) return;
         
-        // 監聽 Enter 鍵
+        
         if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault(); // 阻止原本的換行
+            e.preventDefault(); 
             sendMessage(dom.chatInput.value); 
             dom.chatInput.style.height = 'auto'; 
         }
     });
 
-    // ===== 圖片與附件上拉式選單邏輯 =====
+    
     const btnUploadToggle = document.getElementById('btn-upload-toggle');
     const uploadPopup = document.getElementById('upload-popup');
     const btnUploadImg = document.getElementById('btn-upload-img');
@@ -1331,33 +1331,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const imageUpload = document.getElementById('image-upload');
 
     if (btnUploadToggle) {
-        // 展開/收合上拉選單
+        
         btnUploadToggle.addEventListener('click', (e) => {
             e.stopPropagation();
             uploadPopup.classList.toggle('hidden');
         });
 
-        // 點擊空白處關閉選單
+        
         document.addEventListener('click', (e) => {
             if (!btnUploadToggle.contains(e.target) && !uploadPopup.contains(e.target)) {
                 uploadPopup.classList.add('hidden');
             }
         });
 
-        // 點擊附件選項
+        
         btnUploadFile.addEventListener('click', () => {
             dom.fileUpload.click();
             uploadPopup.classList.add('hidden');
         });
 
-        // 點擊圖片選項
+        
         btnUploadImg.addEventListener('click', () => {
             imageUpload.click();
             uploadPopup.classList.add('hidden');
         });
     }
 
-    // 🌟 全域取消附件引擎：供 X 按鈕呼叫，也供發送後瞬間清空呼叫
+    
     window.clearAttachment = function(e) {
         if (e) { e.stopPropagation(); e.preventDefault(); }
         attachedFile = null;
@@ -1377,7 +1377,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fileContentBuffer = evt.target.result; 
                 attachedFile = { name: file.name, type: 'image', data: evt.target.result }; 
                 
-                // 🌟 加入右上角紅色 X 刪除按鈕
+                
                 const thumbnailHtml = `
                     <div style="position: relative; display: inline-block;">
                         <img src="${evt.target.result}" style="width: 48px; height: 48px; object-fit: cover; border-radius: 8px; display: block; box-shadow: 0 4px 12px rgba(0,0,0,0.2); border: 1px solid rgba(128,128,128,0.2);">
@@ -1405,7 +1405,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fileContentBuffer = evt.target.result;
                 attachedFile = { name: file.name, type: 'file', data: evt.target.result }; 
                 
-                // 🌟 加入右上角紅色 X 刪除按鈕
+                
                 const fileHtml = `
                     <div style="position: relative; display: inline-block;">
                         <div style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: rgba(128, 128, 128, 0.15); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-color);">
@@ -1426,7 +1426,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 處理一般文字/文檔附件上傳 (使用 SVG 替換 Emoji)
+    
     dom.fileUpload.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -1435,7 +1435,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fileContentBuffer = evt.target.result;
             attachedFile = { name: file.name, type: 'file', data: evt.target.result }; 
             
-            // 🌟 採用 SVG 圖示的文件預覽
+            
             const fileHtml = `<div style="display:flex; align-items:center; gap:6px;">
                 ${svgFileIcon}
                 <span style="font-size:13px; font-weight:600;">已附加附件: <span style="font-weight:400; opacity:0.8; max-width:120px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-block; vertical-align:bottom;">${file.name}</span></span>
@@ -1456,7 +1456,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.target.value = ''; 
     });
 
-    // ===== 模式切換 (Chat vs Live2D) =====
+    
     function switchMode(targetMode) {
         if (targetMode === 'live2d') {
             dom.btnLive2DSettings.classList.remove('hidden'); 
@@ -1467,7 +1467,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 dom.viewChat.classList.add('hidden'); 
                 
-                // 👇 🌟 修正 1-A：確保同時移除 'hidden' 和 'l2d-hidden'，防止第一次載入時 PIXI 抓到 0 寬高而黑屏！
+                
                 dom.viewLive2D.classList.remove('hidden', 'l2d-hidden'); 
                 
                 dom.btnModeLive2D.classList.add('active'); dom.btnModeChat.classList.remove('active');
@@ -1477,7 +1477,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     initLive2D(); 
                 } else { 
                     live2dApp.start(); 
-                    // 切換回來時，確保畫布重繪與大小自適應
+                    
                     setTimeout(() => {
                         live2dApp.resize();
                         updateLive2DScale(live2dModelInstance);
@@ -1487,7 +1487,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             dom.btnLive2DSettings.classList.add('hidden'); 
             dom.viewChat.classList.remove('hidden'); 
-            // 👇 離開時不殺死它，只隱藏
+            
             dom.viewLive2D.classList.add('l2d-hidden'); 
             dom.btnModeChat.classList.add('active'); dom.btnModeLive2D.classList.remove('active');
             currentMode = 'chat'; smoothScrollToBottom();
@@ -1514,20 +1514,20 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.selInputLang.value = appSettings.inputLang || 'cantonese';
         dom.selOutputLang.value = appSettings.outputLang || 'cantonese';
         dom.selTextLang.value = appSettings.textLang || 'chinese';
-        // 🌟 新增：讀取並觸發開關連動
+        
         dom.selVoiceToggle.value = appSettings.voiceToggle === false ? 'off' : 'on';
         dom.selVoiceToggle.dispatchEvent(new Event('change'));
         dom.langModal.classList.remove('hidden');
         closeSidebarHandler();
     });
 
-    // 👇 🌟 新增：選擇關閉時，自動禁用下方兩個選項並變灰
+    
     dom.selVoiceToggle.addEventListener('change', (e) => {
         const isOff = e.target.value === 'off';
         dom.selInputLang.disabled = isOff;
         dom.selOutputLang.disabled = isOff;
         
-        // 改變父元素(label)的透明度與游標，提供明顯的視覺回饋
+        
         dom.selInputLang.parentNode.style.opacity = isOff ? '0.4' : '1';
         dom.selOutputLang.parentNode.style.opacity = isOff ? '0.4' : '1';
         dom.selInputLang.style.cursor = isOff ? 'not-allowed' : 'pointer';
@@ -1536,9 +1536,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function smoothScrollToBottom() { dom.chatHistory.scrollTo({ top: dom.chatHistory.scrollHeight, behavior: 'smooth' }); }
 
-    // ==========================================
-    // 🌟 Live2D 核心架構、語音識別與仿生模擬 (放這裡！)
-    // ==========================================
+    
+    
+    
     let l2dInputMode = 'auto'; 
     let recognition = null;
     let isSpeechRecording = false;
@@ -1550,7 +1550,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function initWebSpeechAPI() {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         
-        // 🌟 防呆 1：如果瀏覽器不支援，或沒有使用 HTTPS (Web Speech 嚴格要求安全連線)
+        
         if (!SpeechRecognition) {
             alert("⚠️ 您的瀏覽器不支援語音識別 (請使用 Chrome, Edge 或 Safari)，或請確保您正在使用 HTTPS 安全連線。");
             return false;
@@ -1571,12 +1571,12 @@ document.addEventListener('DOMContentLoaded', () => {
             inputTextArea.value = resultText;
 
             if (l2dInputMode === 'auto') {
-                // 直發模式：直接呼叫後端發送
+                
                 sendLive2DMessage(resultText);
             }
         };
 
-        // 🌟 防呆 2：捕捉各種權限與環境錯誤，並明確告知使用者
+        
         recognition.onerror = (event) => {
             console.error("語音識別錯誤:", event.error);
             if (event.error === 'not-allowed') {
@@ -1594,29 +1594,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return true;
     }
 
-    // =======================================================
-    // 🎤 終極強化版：拋棄式語音識別引擎 (徹底解決手機卡死問題)
-    // =======================================================
+    
+    
+    
     function toggleL2dSpeech() {
-        // 1. 如果正在錄音中，點擊就是「停止」
+        
         if (isSpeechRecording && recognition) {
             recognition.stop();
             return;
         }
 
-        // 2. 檢查環境是否支援 (防呆：揪出非 HTTPS 連線)
+        
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
             alert("⚠️ 無法啟動麥克風！\n原因 1：瀏覽器不支援 (請使用 Safari 或 Chrome)。\n原因 2：您目前未使用 HTTPS 安全連線 (手機端嚴格要求)。\n👉 解決方案：請確保您是用 Cloudflare Tunnel (https://...) 的網址開啟此網頁！");
             return;
         }
 
-        // 3. 🌟 核心修復：每次都宣告一個「全新」的識別實例，徹底避開底層狀態卡死
+        
         recognition = new SpeechRecognition();
         recognition.continuous = false;
         recognition.interimResults = false;
         
-        // 套用使用者在設定面板選擇的語言
+        
         recognition.lang = sttLangMap[appSettings.inputLang] || 'zh-HK';
 
         recognition.onstart = () => {
@@ -1630,7 +1630,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const inputTextArea = document.getElementById('l2d-chat-input');
             inputTextArea.value = resultText;
 
-            // 如果是直發模式，拿到文字就直接送出
+            
             if (l2dInputMode === 'auto') {
                 sendLive2DMessage(resultText);
             }
@@ -1643,21 +1643,21 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (event.error === 'network') {
                 alert("⚠️ 語音識別需要網路連線，或您的系統正處於省電/隱私阻擋模式。");
             }
-            // no-speech (沒講話) 屬於正常現象，不跳警告，直接安靜關閉即可
+            
             stopL2dRecognition();
         };
 
         recognition.onend = () => { 
             stopL2dRecognition(); 
-            // 🌟 引擎任務結束，徹底釋放變數，下次點擊會產生新的
+            
             recognition = null; 
         };
 
-        // 4. 喚醒音訊上下文 (解決 iOS 靜音播放問題)
+        
         if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
         if (audioContext.state === 'suspended') audioContext.resume();
 
-        // 5. 點火啟動！
+        
         try {
             recognition.start();
         } catch (e) {
@@ -1680,16 +1680,16 @@ document.addEventListener('DOMContentLoaded', () => {
             window.audioContext.resume();
         }
 
-        ttsInterruptToken++; // 🌟 每次呼叫就換一個新 Token
-        const myToken = ttsInterruptToken; // 🌟 記住當下這句話的專屬 Toke
+        ttsInterruptToken++; 
+        const myToken = ttsInterruptToken; 
 
-        // 👇 🌟 核心捕獲：在一開始就鎖定語音狀態，確保中途切換設定「絕對不會」影響這句話！
+        
         const isVoiceEnabled = appSettings.voiceToggle !== false;
 
         let textToSpeak = fullText;
         let textToDisplay = fullText;
 
-        // 🌟 升級版正則：忽略大小寫(i)、容忍缺少閉合標籤($)、容忍標籤內有空白
+        
         const voiceRegex = /\[\s*VOICE\s*\]([\s\S]*?)(?:\[\s*\/\s*VOICE\s*\]|$)/i;
         const textRegex = /\[\s*TEXT\s*\]([\s\S]*?)(?:\[\s*\/\s*TEXT\s*\]|$)/i;
         
@@ -1701,31 +1701,31 @@ document.addEventListener('DOMContentLoaded', () => {
         if (textMatch) {
             textToDisplay = textMatch[1].trim(); 
         } else if (voiceMatch) {
-            // 防呆：如果 AI 真的沒寫 TEXT 標籤，把 VOICE 部分挖掉，剩下的當顯示文字
+            
             textToDisplay = fullText.replace(voiceRegex, '').trim(); 
         }
 
-        // 🌟 終極防禦：暴力清除畫面上任何殘留的 [TEXT] 或 [VOICE] 相關標籤殘骸
+        
         textToDisplay = textToDisplay.replace(/\[\s*\/?\s*(VOICE|TEXT)\s*\]/gi, '').trim();
         textToSpeak = textToSpeak.replace(/\[\s*\/?\s*(VOICE|TEXT)\s*\]/gi, '').trim();
 
-        // 過濾 Markdown 符號以免語音引擎誤讀
+        
         textToSpeak = textToSpeak.replace(/[*#_`~]/g, '');
 
         const targetLang = appSettings.outputLang || 'cantonese';
-        // ... (下方 langMap 與 playNextQueue 保持不變) ...
         
-        // 🌟 建立語言映射表 (把後端的邏輯搬到前端)
+        
+        
         const langMap = { 'cantonese': 'yue', 'mandarin': 'zh', 'japanese': 'ja', 'english': 'en' };
         const mappedLang = langMap[targetLang] || 'yue';
 
-        // 🚀 核心優化 1：極限切分！加入「逗號(,)」與「頓號(、)」
+        
         const splitRegex = /[^，。、！？,.!?\n]+[，。、！？,.!?\n]*/g;
         const voiceSentences = textToSpeak.match(splitRegex) || [textToSpeak];
         const textSentences = textToDisplay.match(splitRegex) || [textToDisplay];
         
         if (currentAudio) {
-            // 🌟 徹底殺死舊語音，拔除所有事件監聽與 src，釋放記憶體
+            
             currentAudio.onplaying = null;
             currentAudio.onerror = null;
             currentAudio.onended = null;
@@ -1766,9 +1766,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const encodedText = encodeURIComponent(currentItem.voice);
             let baseUrl = appSettings.ttsApiUrl;
 
-            // =======================================================
-            // 🌟 唯一且致命的修復：把打字機需要的變數，移到「開關判斷」的上方！
-            // =======================================================
+            
+            
+            
             let baseText = accumulatedText;
             if (baseText !== "") baseText += " ";
             const textToType = currentItem.text;
@@ -1832,7 +1832,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, (estimatedSeconds * 1000) + 800);
             }
 
-            // 👇 🌟 核心權限與開關攔截：因為 textToType 已經提早宣告，這裡切換無聲打字絕對不會再當機了！
+            
             if (!currentUser || !isVoiceEnabled || !baseUrl) {
                 executeSilentTyping(true); 
                 return;
@@ -1841,9 +1841,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!baseUrl.endsWith('/')) baseUrl += '/';
             const primaryUrl = `${baseUrl}?text=${encodedText}&text_language=${mappedLang}`;
 
-            // =========================================================================
-            // 🔒 下方語音播放邏輯 100% 複製你上傳的代碼，絕對不干擾你現有的 TTS 播放！
-            // =========================================================================
+            
+            
+            
             currentAudio = new Audio(primaryUrl);
             currentAudio.crossOrigin = "anonymous"; 
 
@@ -1921,20 +1921,20 @@ document.addEventListener('DOMContentLoaded', () => {
         playNextQueue();
     }
 
-    // =======================================================
-    // 🤖 終極仿生動態引擎 (表情感測 + 優化嘴型同步)
-    // =======================================================
+    
+    
+    
     function setupHiyoriBiomimeticTicker(app, model) {
         const bubble = document.getElementById('live2d-speech-bubble');
         
-        // 🌟 2. 徹底消滅卡頓：將時間變數與 PIXI 畫布刷新率完全鎖死
+        
         if (typeof app.locals === 'undefined') app.locals = { tickTime: 0 };
 
         app.ticker.add(() => {
             if (!model || !model.internalModel || !model.internalModel.coreModel) return;
 
             try {
-                // 使用 PIXI 精準流逝時間，達成 0 毫秒的微秒級同步
+                
                 app.locals.tickTime += app.ticker.elapsedMS * 0.001;
                 const t = app.locals.tickTime;
 
@@ -1966,9 +1966,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         core.setParameterValueById('ParamMouthForm', 0.2); 
                     }
 
-                    // ==========================================
-                    // 👄 終極重構：物理級 RMS 雙引擎 + 霸權覆蓋系統 + 🌟 影像延遲補償器
-                    // ==========================================
+                    
+                    
+                    
                     let targetMouth = 0; 
 
                     if (ttsSpeaking) {
@@ -1985,21 +1985,21 @@ document.addEventListener('DOMContentLoaded', () => {
                             currentRms = Math.sqrt(sumSquares / dataArray.length);
                         }
 
-                        // 🌟 升級 1：實作「影像延遲緩衝區」 (讓畫面刻意「等」聲音)
+                        
                         if (!app.locals.rmsBuffer) app.locals.rmsBuffer = [];
                         app.locals.rmsBuffer.push(currentRms);
                         
-                        // 👇 【這裡就是你可以手動微調的終極延遲開關！】
-                        // 60fps 情況下，12 影格約等於 200 毫秒的延遲。
-                        // 如果你用藍牙耳機覺得嘴巴太快，把 12 調大 (例如 15 或 20)。
-                        // 如果你覺得嘴巴變太慢了，把它調小 (例如 0 或 5)。
+                        
+                        
+                        
+                        
                         const delayFrames = 12; 
                         
                         if (app.locals.rmsBuffer.length > delayFrames) {
                             app.locals.rmsBuffer.shift();
                         }
                         
-                        // 取出「過去」的音量，來驅動「現在」的嘴巴
+                        
                         let delayedRms = app.locals.rmsBuffer[0] || 0;
 
                         if (delayedRms > 0.01) {
@@ -2018,8 +2018,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         } else {
                             let elapsedTime = t - app.locals.voiceStartTime;
-                            // 🌟 升級 2：延長仿生引擎的靜音寬容度，從 0.1 秒改為 0.4 秒！
-                            // 這樣就算 TTS 音檔開頭有長達 0.3 秒的無聲空白，嘴巴也會乖乖閉著等，不會亂搶跑。
+                            
+                            
                             if (elapsedTime > 0.4) {
                                 let waveMain = Math.sin((elapsedTime - 0.4) * 16) * 0.7;
                                 let waveDetail = Math.sin((elapsedTime - 0.4) * 26) * 0.3;
@@ -2034,11 +2034,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (app.locals) {
                             app.locals.hasRealAudio = false;
                             app.locals.voiceStartTime = undefined;
-                            if (app.locals.rmsBuffer) app.locals.rmsBuffer = []; // 講完話務必清空緩衝區
+                            if (app.locals.rmsBuffer) app.locals.rmsBuffer = []; 
                         }
                     }
 
-                    // 🌟 獨立記憶體 + 霸權覆蓋機制 (防待機動作衝突)
+                    
                     if (typeof app.locals.lastMouthOpen === 'undefined') {
                         app.locals.lastMouthOpen = 0;
                     }
@@ -2052,17 +2052,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (ttsSpeaking || finalMouth > 0.01) {
                         core.setParameterValueById('ParamMouthOpenY', finalMouth);
                     }
-                    // ==========================================
+                    
 
-                    // 4. 💬 氣泡同步連動算法
+                    
                     if (bubble && bubble.dataset.baseX) {
                         const isMobile = window.innerWidth <= 768; 
 
-                        // 刪除會造成卡頓的 Math.round 和強制的 transition none
+                        
                         
                         let offsetX, offsetY;
                         
-                        // 保持內斂微小的移動幅度
+                        
                         if (isMobile) {
                             offsetX = (bodyAngleX * 1.5) - (angleX * 0.3);
                             offsetY = -(angleY * 0.6); 
@@ -2071,9 +2071,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             offsetY = -(angleY * 0.8); 
                         }
 
-                        // 👇 🌟 終極殺手鐧：GPU 硬件加速 (translate3d)
-                        // 不再修改 left 和 top！改用 transform 平移圖層。
-                        // 這能保留小數點的「極致絲滑」，且瀏覽器不會重新計算內部文字排版，徹底解決所有問題！
+                        
+                        
+                        
                         bubble.style.transform = `translate3d(${offsetX}px, ${offsetY}px, 0)`;
                     }
                 }
@@ -2106,7 +2106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
 
-        // 🌟 核心修復：提取完檔案數據後，立刻呼叫引擎瞬間洗淨畫面的預覽縮圖！
+        
         if (window.clearAttachment) window.clearAttachment();
 
         live2dFullHistory.push({ role: 'user', content: userText, file: currentFilePayload ? { ...currentFilePayload } : null });
@@ -2128,7 +2128,7 @@ document.addEventListener('DOMContentLoaded', () => {
             text_lang: appSettings.textLang,
             ai_model: appSettings.model,
             api_key: appSettings.apiKey,
-            file_context: currentFilePayload ? currentFilePayload.data : "", // 🌟 重點防禦
+            file_context: currentFilePayload ? currentFilePayload.data : "", 
             local_url: appSettings.localUrl,
             local_model_name: appSettings.localModel,
             app_lang: appSettings.appLang
@@ -2144,7 +2144,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error(`Server Error: ${response.status}`);
 
             const reader = response.body.getReader();
-            // ... (下方的 const decoder = new TextDecoder... 保持原樣不動)
+            
             const decoder = new TextDecoder("utf-8");
             let fullAiResponse = "";
 
@@ -2161,20 +2161,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         try {
                             const dataObj = JSON.parse(dataStr);
                             
-                            // 攔截清空緩存指令不變
+                            
                             if (dataObj.text && dataObj.text.includes('[CLEAR_LOCAL_STORAGE]')) {
                                 alert(dataObj.text.replace('[CLEAR_LOCAL_STORAGE]', ''));
                                 localStorage.clear(); window.location.reload(); return;
                             }
 
-                            // 🌟 👇 修正 2：切換情緒時，把不小心加進去的 hidden 徹底刪除！
+                            
                             if (fullAiResponse.length < 10 && dataObj.text) {
                                 if (/excited|激動|興奮|大喊|shout|intense/i.test(fullAiResponse + dataObj.text)) {
                                     live2dMood = 'excited';
-                                    bubble.className = "live2d-bubble mood-excited"; // 🚨 刪除了 hidden！
+                                    bubble.className = "live2d-bubble mood-excited"; 
                                 } else {
                                     live2dMood = 'calm';
-                                    bubble.className = "live2d-bubble mood-calm"; // 🚨 刪除了 hidden！
+                                    bubble.className = "live2d-bubble mood-calm"; 
                                 }
                             }
 
@@ -2184,16 +2184,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // 將全量回覆送入 TTS 與氣泡分離器
+            
             speakFrontendTTS(fullAiResponse);
 
-            // 👇 🌟 核心修復：補回缺失的 AI 紀錄儲存代碼
+            
             live2dFullHistory.push({ role: 'ai', content: fullAiResponse });
             saveL2dHistory();
             renderL2dHistory();
 
-            // 👇 儲存至專屬歷史紀錄，且不呼叫 saveSession()
-            // ✅ 修正版：將圖片檔案一併寫入 AI 的歷史記憶陣列
+            
+            
             let userMsgObj = { role: 'user', content: text };
             if (currentFilePayload) {
                 userMsgObj.file = { ...currentFilePayload };
@@ -2201,30 +2201,30 @@ document.addEventListener('DOMContentLoaded', () => {
             live2dMessages.push(userMsgObj);
             live2dMessages.push({ role: 'ai', content: fullAiResponse });
 
-            // 清空輸入框
+            
             document.getElementById('l2d-chat-input').value = "";
 
         } catch (err) {
             bubble.querySelector('.bubble-text').innerText = "⚠️ 網路連線失敗";
         } finally {
-            // 👇 接收完畢後解除按鈕鎖定
+            
             l2dSendBtn.disabled = false;
             l2dMicBtn.disabled = false;
             if (l2dInputMode === 'verify') {
                 l2dInput.readOnly = false;
             }
-            // 🌟 解除防連點鎖
+            
             isProcessingRequest = false;
         }
     }
 
-    // =======================================================
-    // 🌟 動態模型自適應縮放器 (升級版：支援動態心跳氣泡基準點)
-    // =======================================================
-    // =======================================================
-    // 🌟 動態模型自適應縮放器 (支援實時箭頭精準置中)
-    // =======================================================
-    // ===== 🌟 手機顯示還原版 =====
+    
+    
+    
+    
+    
+    
+    
     function updateLive2DScale(model) {
         if (!model || !live2dApp) return;
         
@@ -2238,53 +2238,53 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (isMobile) {
-            // 🌟 1. 還原原來的手機顯示尺寸 (加大 Scale)
+            
             model.scale.set(0.25); 
-            // 🌟 2. 還原原來的手機靠左定位邏輯 (大幅度向左推)
+            
             model.x = -model.width * 0.31; 
             model.y = logicalHeight - model.height + (model.height * 0.25); 
         } else {
-            // 電腦版保持置中 (如果你希望電腦版也要靠左，請把電腦版的 model.x 修改為固定負值)
+            
             const unscaledHeight = model.height / model.scale.y;
             let maxAllowableScale = (logicalHeight - 5) / (unscaledHeight * 0.75);
             let finalScale = Math.min(0.35, maxAllowableScale);
             model.scale.set(finalScale);
             
-            model.x = (logicalWidth - model.width) / 2; // 電腦版強制置中
+            model.x = (logicalWidth - model.width) / 2; 
             model.y = logicalHeight - model.height + (model.height * 0.25);
         }
 
-        // 💬 氣泡邏輯 (🛑 嚴格保留原本的動態偵測闊度邏輯)
+        
         const bubble = document.getElementById('live2d-speech-bubble');
-        const historyPanel = document.getElementById('l2d-history-panel'); // 🌟 新增
+        const historyPanel = document.getElementById('l2d-history-panel'); 
 
         if (bubble) {
             let headY = model.y + model.height * (isMobile ? 0.12 : 0.20);
             let headX = isMobile ? (logicalWidth * 0.51) : (logicalWidth / 2 + 100);
 
-            // 👇 🌟 新增：偵測懸浮窗是否開啟，決定要往內縮減多少空間
+            
             let panelOffset = 0;
             if (!isMobile && historyPanel && !historyPanel.classList.contains('hidden')) {
-                panelOffset = 370; // 懸浮窗寬度 350 + 安全距離 20
+                panelOffset = 370; 
             }
 
-            // 🌟 減去 panelOffset，達成開窗瞬間氣泡自動內縮！
+            
             let maxAvailableSpace = logicalWidth - headX - panelOffset - 20; 
 
-            // 🌟 原有的絕對閥值限制邏輯
+            
             let absoluteLimit = isMobile ? maxAvailableSpace : 700;
 
-            // 🌟 原有的「兩者取其輕」寬度算法
+            
             let bubbleMaxWidth = Math.min(maxAvailableSpace, absoluteLimit); 
 
-            // 🚑 原有的手機螢幕防呆救援
+            
             if (isMobile && bubbleMaxWidth < 180) {
-                headX = logicalWidth * 0.20; // 氣泡往左移
+                headX = logicalWidth * 0.20; 
                 bubbleMaxWidth = logicalWidth - headX - 20; 
             }
 
             bubble.style.maxWidth = `${bubbleMaxWidth}px`;
-            // ... (下面保持不變)
+            
             
             bubble.style.minWidth = isMobile ? "80px" : "120px"; 
 
@@ -2297,26 +2297,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-   // 監聽螢幕旋轉或大小改變，即時縮放模型
+   
     window.addEventListener('resize', () => {
         if (live2dModelInstance && currentMode === 'live2d') {
-            // 🌟 核心修復：只有在「物理寬度」改變(手機旋轉)時，才允許重算模型比例！
-            // 徹底阻斷 Android 鍵盤彈出造成的錯誤 Resize 壓縮人物！
+            
+            
             if (window.innerWidth !== window.physicalWidth) {
                 setTimeout(() => updateLive2DScale(live2dModelInstance), 100);
             }
         }
     });
 
-    // ==========================================
-    // 🌸 櫻花特效引擎 (支援效能偵測與安全開關)
-    // ==========================================
+    
+    
+    
     window.toggleSakuraPetals = function() {
         const container = document.getElementById('view-live2d');
         if (!container) return;
 
-        // 🌟 1. 效能與相容性自動偵測 (Auto-Detect)
-        // 偵測使用者系統是否在 OS 層級開啟了「減少動態效果」，以此判斷硬體是否受限
+        
+        
         const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         
         if (prefersReducedMotion) {
@@ -2325,13 +2325,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dom.selSakuraEffect) dom.selSakuraEffect.value = 'off';
         }
 
-        // 2. 清除畫面上現有的所有櫻花殘骸
+        
         container.querySelectorAll('.sakura-petal').forEach(p => p.remove());
 
-        // 3. 如果設定為關閉，就此中斷，不再耗費資源生成
+        
         if (appSettings.sakuraEffect === false) return;
 
-        // 4. 生成櫻花 (加入 try-catch 護盾，若有任何渲染阻擋自動關閉)
+        
         try {
             for (let i = 0; i < 50; i++) {
                 let petal = document.createElement('div');
@@ -2354,22 +2354,22 @@ document.addEventListener('DOMContentLoaded', () => {
     async function initLive2D() {
         if (live2dApp) return;
 
-        // 🌟 啟動櫻花引擎 (會自動判斷開關與效能)
+        
         window.toggleSakuraPetals();
 
         const canvas = document.getElementById('live2d-canvas');
         const stageContainer = document.getElementById('live2d-stage-container');
         const bubble = document.getElementById('live2d-speech-bubble');
         
-        // 👇 🌟 抓取 Loading 元件並顯示它
+        
         const loadingOverlay = document.getElementById('live2d-loading');
         if (loadingOverlay) loadingOverlay.classList.remove('hidden');
 
-        // 🚨 診斷 1：檢查官方核心引擎是否被瀏覽器或擋廣告外掛(AdBlock)攔截！
+        
         if (!window.Live2DCubismCore) {
             bubble.querySelector('.bubble-text').innerText = "⚠️ 核心引擎載入失敗！\n請關閉「擋廣告擴充套件(AdBlock)」或「Brave 護盾」後重整網頁。";
             bubble.classList.remove('hidden');
-            if (loadingOverlay) loadingOverlay.classList.add('hidden'); // 出錯時隱藏 loading
+            if (loadingOverlay) loadingOverlay.classList.add('hidden'); 
             return;
         }
 
@@ -2392,7 +2392,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         for (const url of modelUrls) {
             try {
-                // 模型下載通常是在這一行花費最多時間
+                
                 live2dModelInstance = await PIXI.live2d.Live2DModel.from(url);
                 console.log("✅ 成功尋獲模型，使用路徑: " + url);
                 break; 
@@ -2405,7 +2405,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!live2dModelInstance) {
             bubble.querySelector('.bubble-text').innerText = `⚠️ 找不到模型檔案！\n請確認 hiyori_free 資料夾是否真的放在正確位置。\n(錯誤代碼: ${lastError ? lastError.message : '未知'})`;
             bubble.classList.remove('hidden');
-            if (loadingOverlay) loadingOverlay.classList.add('hidden'); // 出錯時隱藏 loading
+            if (loadingOverlay) loadingOverlay.classList.add('hidden'); 
             return; 
         }
 
@@ -2421,13 +2421,13 @@ document.addEventListener('DOMContentLoaded', () => {
             bubble.querySelector('.bubble-text').innerText = "⚠️ 渲染器異常: " + error.message;
             bubble.classList.remove('hidden');
         } finally {
-            // 👇 🌟 模型載入且渲染成功後 (或是發生 catch 錯誤後)，保證隱藏 Loading 畫面
+            
             if (loadingOverlay) loadingOverlay.classList.add('hidden');
         }
     }
-    // =======================================================
-    // 🖊️ 升級版：單一開關控制島 (關閉校對自動切回直發模式)
-    // =======================================================
+    
+    
+    
     function setupLive2DControls() {
         const dict = translations[appSettings.appLang || 'en'];
         const btnVerify = document.getElementById('btn-l2d-mode-verify');
@@ -2438,16 +2438,16 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (l2dMicBtn) l2dMicBtn.innerHTML = svgMic;
 
-        // =======================================================
-        // 🌟 核心動態注入：在畫筆左側現場鑄造「上傳功能套件」
-        // =======================================================
+        
+        
+        
         if (dashboard && btnVerify && !document.getElementById('l2d-upload-container')) {
-            // 1. 建立總外殼容器
+            
             const uploadContainer = document.createElement('div');
             uploadContainer.id = 'l2d-upload-container';
             uploadContainer.className = 'l2d-upload-container';
 
-            // 2. 建立主觸發按鈕 (採用與普通模式相同的 icon-btn 質感與 + 號)
+            
             const toggleBtn = document.createElement('button');
             toggleBtn.id = 'btn-l2d-upload-toggle';
             toggleBtn.className = 'icon-btn';
@@ -2455,7 +2455,7 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleBtn.style.fontSize = '22px'; toggleBtn.style.lineHeight = '38px';
             toggleBtn.innerHTML = '＋';
 
-            // 3. 建立上拉彈出功能選單 (結構與普通模式 100% 複製)
+            
             const popup = document.createElement('div');
             popup.id = 'l2d-upload-popup';
             popup.className = 'upload-popup hidden';
@@ -2473,18 +2473,18 @@ document.addEventListener('DOMContentLoaded', () => {
             popup.appendChild(optImg);
             popup.appendChild(optFile);
 
-            // 4. 建立浮動附加預覽框
+            
             const preview = document.createElement('div');
             preview.id = 'l2d-upload-preview';
             preview.className = 'hidden';
 
-            // 組裝並精準插入到畫筆按鈕的左邊
+            
             uploadContainer.appendChild(toggleBtn);
             uploadContainer.appendChild(popup);
             uploadContainer.appendChild(preview);
             dashboard.insertBefore(uploadContainer, btnVerify.parentNode);
 
-            // 5. 綁定彈出選單事件
+            
             toggleBtn.onclick = (e) => {
                 e.stopPropagation();
                 popup.classList.toggle('hidden');
@@ -2496,20 +2496,20 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // 🌟 畫筆（校對模式）雙向開關舊邏輯完美保留
+        
         if (btnVerify) {
             btnVerify.innerHTML = svgPen;
-            // 🚨 移除原本寫死的 setAttribute，交由下方初始化邏輯動態判斷
+            
             window.bindTooltipEvents(btnVerify);
 
-            // 初始化判斷
+            
             if (l2dInputMode === 'verify') {
                 btnVerify.classList.add('active');
                 l2dInput.readOnly = false;
                 l2dInput.placeholder = dict.l2d_placeholder_verify;
                 if (l2dSendBtn) l2dSendBtn.classList.remove('hidden');
                 
-                // 🌟 初始化為校對模式介紹框
+                
                 btnVerify.setAttribute('data-i18n-tooltip', 'tooltip_l2d_verify');
                 btnVerify.setAttribute('data-tooltip', dict.tooltip_l2d_verify);
             } else {
@@ -2518,7 +2518,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 l2dInput.placeholder = dict.l2d_placeholder_auto;
                 if (l2dSendBtn) l2dSendBtn.classList.add('hidden');
                 
-                // 🌟 初始化為直發模式介紹框
+                
                 btnVerify.setAttribute('data-i18n-tooltip', 'tooltip_l2d_auto');
                 btnVerify.setAttribute('data-tooltip', dict.tooltip_l2d_auto);
             }
@@ -2531,7 +2531,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     l2dInput.placeholder = dict.l2d_placeholder_verify;
                     if (l2dSendBtn) l2dSendBtn.classList.remove('hidden');
                     
-                    // 🌟 切換時動態更新為：校對模式
+                    
                     btnVerify.setAttribute('data-i18n-tooltip', 'tooltip_l2d_verify');
                     btnVerify.setAttribute('data-tooltip', dict.tooltip_l2d_verify);
                 } else {
@@ -2541,7 +2541,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     l2dInput.placeholder = dict.l2d_placeholder_auto;
                     if (l2dSendBtn) l2dSendBtn.classList.add('hidden');
                     
-                    // 🌟 切換時動態更新為：直發模式
+                    
                     btnVerify.setAttribute('data-i18n-tooltip', 'tooltip_l2d_auto');
                     btnVerify.setAttribute('data-tooltip', dict.tooltip_l2d_auto);
                 }
@@ -2565,9 +2565,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (l2dInput) l2dInput.placeholder = l2dInputMode === 'auto' ? dict.l2d_placeholder_auto : dict.l2d_placeholder_verify;
     }
 
-    // =======================================================
-    // 🌟 Live2D 獨立聊天紀錄面板系統
-    // =======================================================
+    
+    
+    
     const btnL2dHistory = document.getElementById('btn-l2d-history');
     const panelL2dHistory = document.getElementById('l2d-history-panel');
     const closeL2dHistory = document.getElementById('close-l2d-history');
@@ -2575,36 +2575,36 @@ document.addEventListener('DOMContentLoaded', () => {
     function saveL2dHistory() {
         let saved = false;
         
-        // 🌟 智慧型儲存迴圈：不一次砍光，而是逐張淘汰舊圖直到存得下為止
+        
         while (!saved) {
             try {
                 localStorage.setItem('hkiit_l2d_history', JSON.stringify(live2dFullHistory));
-                saved = true; // 成功儲存，安全跳出迴圈
+                saved = true; 
             } catch (e) {
                 console.warn("⚠️ Live2D 紀錄快取已滿，啟動智慧降維壓縮（逐一清除最舊圖片）...");
                 
-                // 尋找「最舊的」且「還帶有 base64 圖片資料」的訊息索引
+                
                 let oldestImageMsgIndex = -1;
                 for (let i = 0; i < live2dFullHistory.length; i++) {
                     const msg = live2dFullHistory[i];
                     if (msg.file && msg.file.type === 'image' && msg.file.data) {
                         oldestImageMsgIndex = i;
-                        break; // 找到第一張（最舊的）就停止搜尋
+                        break; 
                     }
                 }
                 
-                // 如果有找到舊圖片，就把那張舊圖片清空
+                
                 if (oldestImageMsgIndex !== -1) {
                     live2dFullHistory[oldestImageMsgIndex].file.data = ""; 
-                    // 清空後，while 迴圈會自動進行下一次 try 嘗試儲存
+                    
                 } else {
-                    // 🚨 如果連一張圖片都沒得刪了，但還是報錯（代表純文字對話量已經達到幾 MB 的極限）
+                    
                     console.error("無法儲存：圖片已全數降維，強行清理最舊的對話以釋放空間...");
                     if (live2dFullHistory.length > 10) {
-                        // 刪除最舊的 10 筆對話紀錄來保命
+                        
                         live2dFullHistory.splice(0, 10); 
                     } else {
-                        // 避免死迴圈，直接放棄儲存
+                        
                         break; 
                     }
                 }
@@ -2621,19 +2621,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = document.createElement('div');
             item.className = `l2d-log-item ${msg.role === 'user' ? 'log-user' : 'log-ai'}`;
             
-            // 1. 生成角色名稱
+            
             const roleEl = document.createElement('div');
             roleEl.className = 'l2d-log-role';
             let youStr = appSettings.appLang === 'en' ? '丨You' : '你';
             roleEl.innerText = msg.role === 'user' ? youStr : 'Hiyori';
             
-            // 2. 🌟 生成文字內容容器 (強制使用 Flex 垂直排列，保證順序絕對不亂)
+            
             const textEl = document.createElement('div');
             textEl.className = 'l2d-log-text';
             textEl.style.display = 'flex';
             textEl.style.flexDirection = 'column';
             textEl.style.alignItems = 'flex-start';
-            textEl.style.gap = '8px'; // 圖片與文字之間的優雅間距
+            textEl.style.gap = '8px'; 
             
             let cleanText = msg.content || '';
             const textRegex = /\[\s*TEXT\s*\]([\s\S]*?)(?:\[\s*\/\s*TEXT\s*\]|$)/i;
@@ -2646,9 +2646,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 cleanText = cleanText.replace(/\[\s*\/?\s*(VOICE|TEXT)\s*\]/gi, '').trim();
             }
 
-            // =======================================================
-            // 🌟 3. 絕對優先：先將「圖片/檔案」塞入容器，保證它永遠在最頂部！
-            // =======================================================
+            
+            
+            
             if (msg.file) {
                 if (msg.file.type === 'image') {
                     if (msg.file.data) {
@@ -2661,7 +2661,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         imgEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
                         imgEl.style.cursor = 'pointer';
                         
-                        // 點擊觸發放大鏡
+                        
                         imgEl.onclick = (e) => {
                             e.stopPropagation();
                             let lightbox = document.getElementById('hkiit-image-lightbox');
@@ -2683,13 +2683,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             lightboxImg.src = msg.file.data;
                             requestAnimationFrame(() => lightbox.classList.add('active'));
                         };
-                        textEl.appendChild(imgEl); // 🌟 插入圖片
+                        textEl.appendChild(imgEl); 
                     } else {
-                        // 快取飽和的優雅降維標籤
+                        
                         const imgFallback = document.createElement('div');
                         imgFallback.style.fontSize = '13px'; imgFallback.style.opacity = '0.7';
                         imgFallback.innerText = `🖼️ 圖片: ${msg.file.name} (已成功上傳)`;
-                        textEl.appendChild(imgFallback); // 🌟 插入標籤
+                        textEl.appendChild(imgFallback); 
                     }
                 } else if (msg.file.type === 'file') {
                     const fileBox = document.createElement('div');
@@ -2699,20 +2699,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     fileBox.style.borderRadius = '10px'; fileBox.style.fontSize = '13px';
                     fileBox.style.width = 'max-content'; fileBox.style.maxWidth = '100%';
                     fileBox.innerHTML = `📄 <span style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${msg.file.name}</span>`;
-                    textEl.appendChild(fileBox); // 🌟 插入檔案框
+                    textEl.appendChild(fileBox); 
                 }
             }
 
-            // =======================================================
-            // 🌟 4. 其次：將「文字」用獨立的 div 包起來放在圖片下方
-            // =======================================================
+            
+            
+            
             if (cleanText) {
                 const textSpan = document.createElement('div');
                 textSpan.innerText = cleanText;
                 textEl.appendChild(textSpan);
             }
 
-            // 5. 組裝並加入到 DOM 中
+            
             item.appendChild(roleEl);
             item.appendChild(textEl);
             contentBox.appendChild(item);
@@ -2724,7 +2724,7 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 
     if (btnL2dHistory && panelL2dHistory) {
-        // 點擊懸浮按鈕：自動切換開關 (Toggle)
+        
         btnL2dHistory.onclick = () => {
             panelL2dHistory.classList.toggle('hidden');
             renderL2dHistory();
@@ -2732,12 +2732,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateLive2DScale(live2dModelInstance);
             }
         };
-        // (這裡原本的 closeL2dHistory.onclick 已經整段刪除)
+        
     }
-    // ==========================================
-    // 🌟 終極安全版：全域拖曳上傳引擎 (Drag & Drop)
-    // ==========================================
-    // 同時監聽普通模式的輸入框與 Live2D 的輸入膠囊
+    
+    
+    
+    
     const dropZones = [
         document.querySelector('.input-box'), 
         document.querySelector('.l2d-input-bar')
@@ -2746,35 +2746,35 @@ document.addEventListener('DOMContentLoaded', () => {
     dropZones.forEach(zone => {
         if (!zone) return;
 
-        // 1. 當檔案拖入區域上方時：啟動 CSS 發光特效
+        
         zone.addEventListener('dragover', (e) => {
-            e.preventDefault(); // 必須阻止預設行為，否則無法觸發 drop
+            e.preventDefault(); 
             e.stopPropagation();
             zone.classList.add('drag-over');
         });
 
-        // 2. 當檔案離開區域時：移除特效
+        
         zone.addEventListener('dragleave', (e) => {
             e.preventDefault();
             e.stopPropagation();
             zone.classList.remove('drag-over');
         });
 
-        // 3. 當用戶鬆開滑鼠將檔案丟入時：
+        
         zone.addEventListener('drop', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            zone.classList.remove('drag-over'); // 關閉發光特效
+            zone.classList.remove('drag-over'); 
 
             if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
                 const file = e.dataTransfer.files[0];
                 
-                // 創造一個虛擬的檔案傳輸載體
+                
                 const dataTransfer = new DataTransfer();
                 dataTransfer.items.add(file);
 
-                // 🌟 核心黑魔法：智慧判斷檔案類型，然後把檔案「塞進」原本隱藏的上傳按鈕中，
-                // 並用 dispatchEvent 假裝用戶點擊了它！這樣原本所有的防呆防爆邏輯都會自動執行！
+                
+                
                 if (file.type.startsWith('image/')) {
                     if (imageUpload) {
                         imageUpload.files = dataTransfer.files;
@@ -2790,22 +2790,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // =======================================================
-    // 🌟 手機版終極防呆：動態視口高度校準 (解決網址列吃高度問題)
-    // =======================================================
+    
+    
+    
     const syncRealHeight = () => {
         const realHeight = window.innerHeight;
-        // 讓普通模式與全域畫布跟隨
+        
         document.documentElement.style.setProperty('--app-height', `${realHeight}px`);
-        // 強迫 Live2D 專用的變數也乖乖跟著網址列更新！
+        
         document.documentElement.style.setProperty('--physical-height', `${realHeight}px`);
     };
     window.addEventListener('resize', syncRealHeight);
     syncRealHeight(); 
 
-    // =======================================================
-    // 🌟 手機版終極防呆：PWA 動態高度 (完美同步 FLIP 引擎)
-    // =======================================================
+    
+    
+    
     window.lastVvHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
 
     const setAppHeight = () => {
@@ -2855,19 +2855,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.lastVvHeight = newHeight;
 
-        // 🔒 終極鎖死導航列：只針對 iOS 進行推擠抵銷，Android 絕對不碰！
+        
         const header = document.getElementById('app-header');
         const sidebar = document.getElementById('sidebar');
         const isAndroid = /Android/i.test(navigator.userAgent);
 
         if (!isAndroid) {
-            // iOS 專屬：精準抵銷 Safari 的暴力平移
+            
             const offsetTop = vv.offsetTop;
             if (offsetTop > 0) window.scrollTo(0, 0);
             if (header) header.style.transform = `translate3d(0, ${offsetTop}px, 0)`;
             if (sidebar) sidebar.style.top = `${offsetTop}px`;
         } else {
-            // 🌟 致命修復：Android 鍵盤絕不平移視窗，強制將導航列死死焊在 0 座標！
+            
             if (header) header.style.transform = `translate3d(0, 0, 0)`;
         }
     };
@@ -2897,14 +2897,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // =======================================================
-    // 🌟 UI 升級：將「語言選單」收編進「左側島嶼」架構中
-    // 這樣完全不影響原本功能，但能讓 CSS 將它們優雅地包在同一個島嶼內！
-    // =======================================================
+    
+    
+    
+    
     const headerLeft = document.querySelector('.header-left');
     const langContainer = document.querySelector('.lang-container');
     if (headerLeft && langContainer) {
         headerLeft.appendChild(langContainer);
     }
 
-}); // 👈 這是 main.js 最底部的右括號 (覆蓋到這裡結束！)
+}); 

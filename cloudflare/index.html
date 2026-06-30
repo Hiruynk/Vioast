@@ -19,7 +19,7 @@
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #131314; }
         iframe { width: 100%; height: 100%; border: none; display: block; }
 
-        /* 🎬 網頁端/PWA 共通的網頁開屏加載動畫外殼 */
+   
         #splash-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: #131314; z-index: 9999;
@@ -33,7 +33,7 @@
             animation: pulse 2s infinite ease-in-out;
         }
 
-        /* 🎵 呼吸燈動畫效果，讓開屏更有科技感 */
+        
         @keyframes pulse {
             0%, 100% { transform: scale(1); opacity: 0.8; filter: drop-shadow(0 0 8px rgba(138,180,248,0.2)); }
             50% { transform: scale(1.05); opacity: 1; filter: drop-shadow(0 0 20px rgba(138,180,248,0.6)); }
@@ -41,7 +41,7 @@
 
         #splash-screen.fade-out { opacity: 0; visibility: hidden; }
 
-        /* 📥 新增：在開屏畫面中的客製化下載按鈕樣式 */
+      
         .pwa-download-btn {
             background: #8ab4f8;
             color: #131314;
@@ -53,7 +53,7 @@
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(138, 180, 248, 0.3);
             transition: transform 0.2s, opacity 0.3s;
-            opacity: 0; /* 預設隱藏，只有在瀏覽器支援且未安裝時才會經由 JS 浮現 */
+            opacity: 0; 
             pointer-events: none;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
@@ -77,16 +77,16 @@
     <iframe id="app-iframe" src="https://hiruynk-ive-open-day-chat-bot.hf.space" allow="microphone; display-capture" onload="hideSplash()"></iframe>
 
     <script>
-        // 🔄 當 iframe 內的網頁完全載入完畢後，自動隱藏開屏動畫
+        
         function hideSplash() {
             const splash = document.getElementById('splash-screen');
-            // 延遲 500ms 確保前端渲染穩定，然後優雅淡出
+           
             setTimeout(() => {
                 splash.classList.add('fade-out');
             }, 500);
         }
 
-        // 防呆機制：若雲端伺服器開機太慢，8秒後強制關閉開屏動畫，避免卡死
+        
         setTimeout(() => {
             const splash = document.getElementById('splash-screen');
             if (!splash.classList.contains('fade-out')) {
@@ -94,39 +94,37 @@
             }
         }, 8000);
 
-        // ==========================================
-        // 📥 核心新增：PWA 智能下載與事件攔截邏輯
-        // ==========================================
+       
         let deferredPrompt;
         const downloadBtn = document.getElementById('btn-pwa-download');
 
-        // 當瀏覽器確認網站符合 PWA 安裝條件，且使用者「尚未安裝」時觸發
+        
         window.addEventListener('beforeinstallprompt', (e) => {
-            // 1. 攔截並阻止瀏覽器預設的彈出橫條
+            
             e.preventDefault();
-            // 2. 將安裝事件暫存起來
+            
             deferredPrompt = e;
-            // 3. 讓開屏畫面中的下載按鈕優雅浮現
+            
             downloadBtn.classList.add('show');
         });
 
-        // 點擊下載按鈕時的動作
+     
         downloadBtn.addEventListener('click', async () => {
             if (!deferredPrompt) return;
             
-            // 1. 喚起手機/瀏覽器原生的安裝確認對話框
+           
             deferredPrompt.prompt();
             
-            // 2. 等待使用者的選擇結果
+            
             const { outcome } = await deferredPrompt.userChoice;
             console.log(`User installation choice: ${outcome}`);
             
-            // 3. 不論安裝成功或取消，按鈕功成身退隱藏
+           
             deferredPrompt = null;
             downloadBtn.classList.remove('show');
         });
 
-        // 防呆：如果應用程式已經成功安裝或在獨立視窗（Standalone）開啟，確保按鈕消失
+       
         window.addEventListener('appinstalled', () => {
             console.log('🎉 Vioast App 安裝成功！');
             downloadBtn.classList.remove('show');

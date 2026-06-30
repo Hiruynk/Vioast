@@ -1,5 +1,5 @@
 import json
-#import time
+
 import re
 import requests as req
 from bs4 import BeautifulSoup as bs
@@ -137,7 +137,7 @@ def findCourse(url):
             if name_tag and title_tag:
                 name = name_tag.text.strip()
                 title = title_tag.text.strip()
-                # 封裝為鍵值對
+                
                 sharer_info = {name: title}
                 if sharer_info not in stuShare:
                     stuShare.append(sharer_info)
@@ -147,19 +147,19 @@ def findCourse(url):
 
   return foundCourse
 
-# ==================== 新增：維基百科學校背景爬蟲 ====================
+
 def findSchoolIntrodce(url):
     info = {}
-    # 偽裝成瀏覽器，防止維基百科阻擋
+    
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
     resp = req.get(url, headers=headers)
     soup = bs(resp.text, "html.parser")
     
-    # 1. 抓取學校標題
+    
     title = soup.find("h1", id="firstHeading")
     info["SchoolName"] = title.text.strip() if title else "Unknown"
     
-    # 2. 抓取右側資訊卡 (Infobox) 提取成立年份、校長等數據
+    
     infobox = soup.find("table", class_="infobox")
     if infobox:
         for row in infobox.find_all("tr"):
@@ -167,16 +167,16 @@ def findSchoolIntrodce(url):
             td = row.find("td")
             if th and td:
                 key = th.text.strip()
-                # 使用 Regex 移除 [1], [2] 等文獻標籤，並清理換行
+                
                 val = re.sub(r'\[\d+\]', '', td.text.strip())
                 val = val.replace('\n', ' ')
                 info[key] = val
                 
-    # 3. 抓取第一段核心簡介 (Introduction)
+    
     paragraphs = soup.find_all("p")
     for p in paragraphs:
         text = p.text.strip()
-        # 找到第一段有實質內容的文字
+        
         if text and len(text) > 30: 
             info["Introduction"] = re.sub(r'\[\d+\]', '', text)
             break

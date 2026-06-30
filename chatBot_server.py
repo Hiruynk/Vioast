@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 import uvicorn
 
-# AI 相關套件
+
 import chromadb
 from chromadb.api.types import Documents, EmbeddingFunction, Embeddings
 from opencc import OpenCC
@@ -18,40 +18,40 @@ from google.genai import types
 from pymongo import MongoClient
 
 
-# ==========================================
-# 1. 基礎設定與模型初始化
-# ==========================================
-cc_s2t = OpenCC('s2hk') # 簡轉繁
-cc_t2s = OpenCC('t2s') # 繁轉簡
+
+
+
+cc_s2t = OpenCC('s2hk') 
+cc_t2s = OpenCC('t2s') 
 app = FastAPI()
 
-# ==========================================
-# 🌟 雲端資料庫驗證初始化 (MongoDB Atlas)
-# ==========================================
+
+
+
 MONGO_URI = os.environ.get("MONGO_URI")
 TTS_API_URL = os.environ.get("TTS_API_URL")
 users_collection = None
-db = None  # 🌟 新增這行，確保全域可用
+db = None  
 
 try:
-    # 加入 Timeout 避免無止盡等待導致伺服器卡死
+    
     mongo_client = MongoClient(MONGO_URI, tlsAllowInvalidCertificates=True, serverSelectionTimeoutMS=5000)
     db = mongo_client["sample_mflix"] 
     users_collection = db["users"]
-    # 測試連線
+    
     mongo_client.admin.command('ping')
     print("✅ 成功連線至 MongoDB 雲端資料庫 [sample_mflix]！")
 except Exception as e:
     print(f"⚠️ 雲端資料庫連線失敗，登入功能將暫時不可用: {e}")
 
-# ==========================================
-# 2. 定義 FastAPI 路由與資料模型
-# ==========================================
+
+
+
 class LoginReq(BaseModel):
     username: str
     password: str
 
-# 🌟 新增：讓儲存請求支援本地 URL 與模型名稱
+
 class SaveKeyReq(BaseModel):
     username: str
     api_key: str = ""
@@ -67,13 +67,13 @@ async def login_api(req: LoginReq):
         return {"status": "error", "msg": "資料庫未連線"}
     user = users_collection.find_one({"username": req.username, "password": req.password})
     if user:
-        # 🌟 登入時，一併回傳 MongoDB 裡的本地模型設定
+        
         return {
             "status": "success", 
             "api_key": user.get("api_key", ""),
             "local_url": user.get("local_url", ""),
             "local_model_name": user.get("local_model_name", "gemma4:12b"),
-            "tts_api_url": TTS_API_URL # 👈 🌟 新增：登入成功時將 API 網址送給前端
+            "tts_api_url": TTS_API_URL 
         }
     return {"status": "error"}
 
@@ -81,7 +81,7 @@ async def login_api(req: LoginReq):
 async def save_key_api(req: SaveKeyReq):
     if users_collection is None:
         return {"status": "error"}
-    # 🌟 儲存時，將這三個參數一起更新到雲端資料庫
+    
     result = users_collection.update_one(
         {"username": req.username},
         {"$set": {
@@ -100,23 +100,23 @@ async def get_key_api(req: GetKeyReq):
         return {"status": "error"}
     user = users_collection.find_one({"username": req.username})
     if user:
-        # 🌟 背景同步時，一併回傳 MongoDB 裡的本地模型設定
+        
         return {
             "status": "success", 
             "api_key": user.get("api_key", ""),
             "local_url": user.get("local_url", ""),
             "local_model_name": user.get("local_model_name", "gemma4:12b"),
-            "tts_api_url": TTS_API_URL # 👈 🌟 新增：重整網頁自動同步時送給前端
+            "tts_api_url": TTS_API_URL 
         }
     return {"status": "error"}
 
-# ==========================================
-# 載入 JSON 資料 (支援中英雙語，動態載入多檔案)
-# ==========================================
+
+
+
 def load_all_data():
     BASE_PATH = "database/"
     
-    # 定義要載入的檔案清單 (介紹檔中英通用，所以兩邊都加入)
+    
     chi_files = ["IVE_courses_CHI.json", "IVE_f_courses_CHI.json", "IVE_introduce.json", "HKIIT_introduce.json"]
     eng_files = ["IVE_courses_ENG.json", "IVE_f_courses_ENG.json", "IVE_introduce.json", "HKIIT_introduce.json"]
     
@@ -130,7 +130,7 @@ def load_all_data():
             try:
                 with open(filepath, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    # 確保無論是單一 Dict 還是 List 都能正確合併
+                    
                     if isinstance(data, list):
                         combined_data.extend(data)
                     else:
@@ -150,9 +150,9 @@ def load_all_data():
 
 courses_chi, courses_eng = load_all_data()
 
-# ==========================================
-# 3. 伺服器專用: 定義 ChromaDB 與 Gemini Embedding (新版 SDK 修正版)
-# ==========================================
+
+
+
 
 class GeminiEmbeddingFunction(EmbeddingFunction):
     def __init__(self, api_key: str):
@@ -164,7 +164,7 @@ class GeminiEmbeddingFunction(EmbeddingFunction):
 
     def __call__(self, input: Documents) -> Embeddings:
         try:
-            # 🌟 關鍵修復：將單純的字串陣列，強制包裝為 SDK 認可的獨立 Content 物件列表
+            
             formatted_contents = [
                 types.Content(parts=[types.Part.from_text(text=text)]) 
                 for text in input
@@ -172,24 +172,24 @@ class GeminiEmbeddingFunction(EmbeddingFunction):
             
             result = self.client.models.embed_content(
                 model=self.model_name,
-                contents=formatted_contents, # 傳入包裝後的陣列
+                contents=formatted_contents, 
                 config={"output_dimensionality": 768}
             )
             return [e.values for e in result.embeddings]
         except Exception as e:
             print(f"❌ Embedding API 錯誤: {e}")
-            # 維度保持 768
+            
             return [[0.0] * 768 for _ in input]
 
 def init_vector_db():
-    # 🌟 1. 改為「純記憶體模式」，徹底避開 HF Space 寫入權限報錯，資料由 MongoDB 提供
+    
     client = chromadb.EphemeralClient()
     collections = {}
     
     api_key = os.getenv("GEMINI_API_KEY")
     embedding_func = GeminiEmbeddingFunction(api_key=api_key)
     
-    # 取得 MongoDB 的 RAG 專用集合 (Collections)
+    
     global db
     mongo_rag_chi = db["rag_chi"] if db is not None else None
     mongo_rag_eng = db["rag_eng"] if db is not None else None
@@ -201,7 +201,7 @@ def init_vector_db():
             embedding_function=embedding_func
         )
         
-        # 🌟 2. 啟動加速：如果 MongoDB 已經有備份過資料，直接抓回記憶體，省下所有 API 呼叫！
+        
         if mongo_col is not None:
             mongo_count = mongo_col.count_documents({})
             if mongo_count > 0:
@@ -213,18 +213,18 @@ def init_vector_db():
                 ids = [d["id"] for d in all_docs]
                 embeddings = [d["embedding"] for d in all_docs]
                 
-                # 寫入 ChromaDB 記憶體
+                
                 batch_size = 50
                 for i in range(0, len(docs), batch_size):
                     collection.add(
                         documents=docs[i:i+batch_size],
-                        embeddings=embeddings[i:i+batch_size], # 直接給算好的向量，跳過 Gemini API！
+                        embeddings=embeddings[i:i+batch_size], 
                         metadatas=metadatas[i:i+batch_size],
                         ids=ids[i:i+batch_size]
                     )
                 return collection
 
-        # 🌟 3. 若 MongoDB 是空的 (第一次啟動)，才呼叫 Gemini 運算
+        
         print(f"📦 MongoDB 無資料，正在透過 Gemini API 計算並建立 {collection_name}...")
         docs, metadatas, ids = [], [], []
         
@@ -282,26 +282,26 @@ def init_vector_db():
             except Exception as e:
                 print(f"⚠️ 寫入 Batch 失敗: {e}")
                 
-        # 🌟 4. 計算完成後，把資料備份到 MongoDB，下次伺服器重啟就不用再算了！
+        
         if mongo_col is not None:
             print(f"☁️ 正在將 {collection_name} 的向量備份到 MongoDB...")
-            # 把剛算好的 embedding 從記憶體中抓出來
+            
             all_data = collection.get(include=["embeddings", "documents", "metadatas"])
             mongo_docs = []
             for i in range(len(all_data["ids"])):
                 
-                # 👇 🌟 核心修復：將 ChromaDB 吐出來的 numpy.ndarray 轉換為原生 list
+                
                 raw_embedding = all_data["embeddings"][i]
                 if hasattr(raw_embedding, "tolist"):
-                    safe_embedding = raw_embedding.tolist() # 將 numpy 陣列與內部的 numpy.float64 徹底轉為原生型態
+                    safe_embedding = raw_embedding.tolist() 
                 else:
-                    safe_embedding = list(raw_embedding)    # 備用防呆機制
+                    safe_embedding = list(raw_embedding)    
                 
                 mongo_docs.append({
                     "id": all_data["ids"][i],
                     "document": all_data["documents"][i],
                     "metadata": all_data["metadatas"][i],
-                    "embedding": safe_embedding # 👈 使用轉換過的安全格式存入資料庫
+                    "embedding": safe_embedding 
                 })
                 
             if mongo_docs:
@@ -317,9 +317,9 @@ def init_vector_db():
 
 vector_collections = init_vector_db()
 
-# ==========================================
-# 定義 FastAPI 路由與資料模型
-# ==========================================
+
+
+
 class ChatRequest(BaseModel):
     message: str
     history: list = []   
@@ -340,17 +340,17 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 async def read_index():
     return FileResponse('static/index.html')
 
-# ==========================================
-# 核心對話 API
-# ==========================================
+
+
+
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):
     user_query = req.message.strip()
     
-    # 👇 修改這行：加入 .lower()，這樣不管打大寫還是小寫都能觸發！
+    
     if user_query.lower() == "clear system cache" or user_query == "強制清除緩存":
         async def clear_cache_stream():
-            # 吐出一個帶有 [CLEAR_LOCAL_STORAGE] 標籤的特製回應
+            
             yield f"data: {json.dumps({'text': '[CLEAR_LOCAL_STORAGE] 🚨 收到強制清除指令！正在抹除本地所有緩存並重啟系統...'})}\n\n"
             yield "data: [DONE]\n\n"
         return StreamingResponse(clear_cache_stream(), media_type="text/event-stream")
@@ -358,31 +358,31 @@ async def chat_endpoint(req: ChatRequest):
     search_query = user_query
     retrieved_context = ""
 
-    # 決定使用的語言庫與系統提示設定
+    
     is_english = req.app_lang == "en"
     is_simp_chi = req.app_lang == "zh-CN"
     
     target_collection = vector_collections.get('eng') if is_english else vector_collections.get('chi')
 
-    # 👇 🌟 新增：攔截 Base64 圖片並轉換為 AI 專用多模態格式
+    
     import base64
     image_part_gemini = None
     image_base64_ollama = None
 
     if req.file_context and req.file_context.startswith("data:image/"):
         try:
-            # 分離標頭 (data:image/jpeg;base64) 與實際編碼
+            
             header, encoded = req.file_context.split(",", 1)
             mime_type = header.split(";")[0].split(":")[1]
             
-            # 給 Gemini 用的原生圖片格式 (Bytes)
+            
             image_bytes = base64.b64decode(encoded)
             image_part_gemini = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
             
-            # 給 Ollama 用的 base64 格式
+            
             image_base64_ollama = encoded
             
-            # 🚨 致命修復：清空 file_context，阻止這串亂碼被塞入純文字提示詞中！
+            
             req.file_context = "" 
         except Exception as e:
             print(f"圖片解析失敗: {e}")
@@ -403,7 +403,7 @@ async def chat_endpoint(req: ChatRequest):
         file_header = "【User Uploaded Reference Document】:\n" if is_english else "【使用者上傳的參考文件內容】：\n"
         retrieved_context = f"{file_header}{req.file_context}\n\n---\n\n" + retrieved_context
 
-    # 根據語言設定 System Instruction
+    
     if is_english:
         sys_role = "You are the official Open Day AI Chatbot Assistant for the Hong Kong Institute of Information Technology (HKIIT)."
         sys_tone = "Professional, structured, and helpful. You MUST answer entirely in ENGLISH."
@@ -444,10 +444,10 @@ async def chat_endpoint(req: ChatRequest):
         6. 【禮貌應對】：遇到無意義或攻擊言論，請用幽默機智的方式婉拒或轉移話題。
         """
     if req.mode == "live2d":
-        # 決定畫面顯示文字的語言
+        
         display_lang = "中文(繁體)" if req.text_lang == "chinese" else "英文(English)"
         
-        # 決定語音引擎要接收的語言
+        
         voice_lang_map = {
             "cantonese": "極度地道的香港廣東話口語 (把「是/的/甚麼/了/在」轉換成「係/嘅/咩/咗/緊」)", 
             "mandarin": "自然流暢的普通話", 
@@ -456,7 +456,7 @@ async def chat_endpoint(req: ChatRequest):
         }
         target_voice = voice_lang_map.get(req.output_lang, voice_lang_map["cantonese"])
 
-        # 🌟 終極大腦：雙軌獨立翻譯標籤系統
+        
         system_instruction_str = f"""你現在是香港專業教育學院IVE & 香港資訊科技學院HKIIT 開放日現場的虛擬學姐助手「桃瀨日和」(Hiyori)。
 說話風格熱情、活潑俏皮。每次回覆嚴格控制在 1 到 2 句話內，並以「引導式問句」結尾。
 
@@ -528,13 +528,13 @@ async def chat_endpoint(req: ChatRequest):
                 for msg in recent_history:
                     ollama_role = "assistant" if msg.get("role") == "ai" else "user"
                     ollama_messages.append({"role": ollama_role, "content": msg.get("content", "")})
-                # 👇 🌟 核心修復：如果存在圖片，將圖片加入 Ollama 的 images 陣列
+                
                 user_msg_dict = {"role": "user", "content": user_query}
                 if image_base64_ollama:
                     user_msg_dict["images"] = [image_base64_ollama]
                 ollama_messages.append(user_msg_dict)
 
-                # 🌟 改為指向我們剛剛寫好的 5070 Ti 腳本的 /api/chat 路由
+                
                 target_url = f"{req.local_url.rstrip('/')}/api/chat"
                 payload = {
                     "model": req.local_model_name if req.local_model_name else "gemma4:12b",
@@ -544,7 +544,7 @@ async def chat_endpoint(req: ChatRequest):
 
                 async with httpx.AsyncClient(timeout=300.0) as client:
                     async with client.stream("POST", target_url, json=payload) as response:
-                        # 🌟 攔截模型不存在的錯誤
+                        
                         if response.status_code == 404:
                             err_txt = f"⚠️ Error: 尋找不到該模型 ({req.local_model_name})，請確認PC上是否已 pull 下載！"
                             yield f"data: {json.dumps({'text': err_txt})}\n\n"
@@ -581,7 +581,7 @@ async def chat_endpoint(req: ChatRequest):
                 q_title = "Current Question" if is_english else "當前問題"
                 full_query_for_gemini = f"{history_text}\n# 【{q_title}】\n{user_query}" if history_text else user_query
 
-                # 👇 🌟 核心修復：如果存在圖片，將圖片物件與文字打包成多模態陣列發送
+                
                 contents_to_send = [image_part_gemini, full_query_for_gemini] if image_part_gemini else full_query_for_gemini
 
                 client = genai.Client(api_key=req.api_key)
@@ -594,7 +594,7 @@ async def chat_endpoint(req: ChatRequest):
                 
                 response_stream = client.models.generate_content_stream(
                     model='gemini-3.1-flash-lite',
-                    contents=contents_to_send, # 👈 這裡換成新的 contents_to_send 變數
+                    contents=contents_to_send, 
                     config=config
                 )
                 

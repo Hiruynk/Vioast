@@ -4,22 +4,20 @@ import json
 import time
 from urllib.parse import urljoin
 
-# 設定目標網址
+
 BASE_URL = "https://www.vtc.edu.hk"
 START_URL = "https://www.vtc.edu.hk/admission/tc/s6/?tab=diploma-of-foundation-studies"
 
-# 模擬瀏覽器的請求標頭 (Headers)
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 }
 
 def parse_page_content(soup):
-    """
-    通用網頁內容解析器：將傳入的 soup 物件解析並回傳結構化字典。
-    """
+  
     inner_info = {}
 
-    # 1. 課程核心優勢 (Advantage)
+    
     advantage_section = soup.find(id="Advantage")
     if advantage_section:
         advantages = []
@@ -31,7 +29,7 @@ def parse_page_content(soup):
                 advantages.append({"title": h3, "description": p})
         inner_info["course_advantages"] = advantages
 
-    # 2. 基本資料 (BasicInfo)
+    
     basic_info_section = soup.find(id="BasicInfo")
     if basic_info_section:
         desc = basic_info_section.find(class_="description-section")
@@ -49,13 +47,13 @@ def parse_page_content(soup):
         remark = basic_info_section.find(class_="remark-content")
         inner_info["basic_info_remarks"] = [li.get_text(strip=True) for li in remark.find_all("li")] if remark else []
 
-    # 3. 入學條件 (AdmissionRequirements)
+    
     admission_section = soup.find(id="AdmissionRequirements")
     if admission_section:
         req_list = admission_section.select(".admission-content-detail .richtext ul li")
         inner_info["admission_requirements"] = [li.get_text(strip=True) for li in req_list]
 
-    # 4. 升學及就業 (FurtherEducation)
+    
     further_ed_section = soup.find(id="FurtherEducation")
     if further_ed_section:
         further_data = {}
@@ -65,7 +63,7 @@ def parse_page_content(soup):
             further_data[t.get_text(strip=True)] = d.get_text(strip=True)
         inner_info["further_education_and_career"] = further_data
 
-    # 5. 課程內容/科目 (CourseContent)
+    
     course_content_section = soup.find(id="CourseContent")
     if course_content_section:
         modules = course_content_section.select(".accordion-content .richtext ul li")
@@ -74,7 +72,7 @@ def parse_page_content(soup):
         remark = course_content_section.find(class_="remark-content")
         inner_info["course_content_remarks"] = [li.get_text(strip=True) for li in remark.find_all("li")] if remark else []
 
-    # 6. 費用及資助 (FeesAndFunding)
+    
     fees_section = soup.find(id="FeesAndFunding")
     if fees_section:
         fee_amt = fees_section.find(class_="fee-amount")
@@ -83,7 +81,7 @@ def parse_page_content(soup):
         remark = fees_section.find(class_="remark-content")
         inner_info["tuition_remarks"] = [li.get_text(strip=True) for li in remark.find_all("li")] if remark else []
 
-    # 7. 學生分享 (Sharing Swiper)
+    
     sharing_section = soup.find(class_="sharing-swiper")
     if sharing_section:
         shares = []
@@ -99,9 +97,7 @@ def parse_page_content(soup):
     return inner_info
 
 def fetch_soup(url):
-    """
-    發送網絡請求並回傳 BeautifulSoup 物件。
-    """
+
     try:
         response = requests.get(url, headers=HEADERS, timeout=10)
         response.encoding = 'utf-8'
@@ -131,12 +127,12 @@ def main():
         course_name_main = item.find(class_='course-name').get_text(strip=True) if item.find(class_='course-name') else ""
         course_location_main = item.find(class_='course-location').get_text(strip=True) if item.find(class_='course-location') else ""
 
-        # 檢查是否包含目標機構
+        
         has_ive = "IVE" in course_location_main or "IVE" in course_name_main
         has_iit = "IIT" in course_location_main or "IIT" in course_name_main
 
         if has_ive or has_iit:
-            # 根據包含的關鍵字決定機構標籤
+            
             if has_ive and has_iit:
                 org_tag = "[IVE & IIT]"
             elif has_iit:
@@ -146,13 +142,13 @@ def main():
 
             print(f"發現目標課程 {org_tag}: {course_name_main} ({course_no}) - 地點: {course_location_main}")
 
-            # 提取中文詳情頁面的 URL 并補全為絕對路徑
+            
             url_anchor = item.find(class_='course-url').find('a') if item.find(class_='course-url') else None
             relative_url_tc = url_anchor['href'] if url_anchor and url_anchor.has_attr('href') else ""
             full_detail_url_tc = urljoin(BASE_URL, relative_url_tc) if relative_url_tc else ""
 
             if full_detail_url_tc:
-                # --- 1. 爬取與解析繁體中文詳情頁 ---
+                
                 time.sleep(1.2)
                 print(f"  --> 正在爬取中文詳情內頁: {full_detail_url_tc}")
                 soup_tc = fetch_soup(full_detail_url_tc)
@@ -171,7 +167,7 @@ def main():
                     })
                     print("  [繁體中文版] 資料整合完成")
 
-                    # --- 2. 從語言切換選單獲取 EN 的網址 ---
+                    
                     relative_url_en = ""
                     switcher = soup_tc.find("ul", class_="language-switcher")
                     if switcher:
@@ -179,11 +175,11 @@ def main():
                             text = a_tag.get_text()
                             if "EN" in text:
                                 relative_url_en = a_tag.get('href', '')
-                                break # 找到英文就跳出迴圈
+                                break 
 
                     full_detail_url_en = urljoin(BASE_URL, relative_url_en) if relative_url_en else ""
 
-                    # --- 3. 爬取與解析英文詳情頁 ---
+                    
                     if full_detail_url_en:
                         time.sleep(1.2)
                         print(f"  --> 正在爬取英文詳情內頁: {full_detail_url_en}")
@@ -203,7 +199,7 @@ def main():
 
             print(f"已完成「{course_no}」的繁、英雙語資料對接。\n")
 
-    # --- 4. 分別匯出兩份 JSON 檔案 ---
+    
     output_tc = "../database/IVE_f_courses_CHI.json"
     output_en = "../database/IVE_f_courses_ENG.json"
 
